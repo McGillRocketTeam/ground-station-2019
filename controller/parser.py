@@ -1,6 +1,8 @@
 import serial
+from model import datastorage
 import model.datastorage as DataStorage
 import views.plots as Plots
+from random import randint
 
 
 class Parser:
@@ -20,14 +22,15 @@ class Parser:
         """
         # print('com5 is open', ser.isOpen())
         while True:
-            # data = ser.read(1000)
-            data = ['1', '3']
-            result = self.parse(data)
+            # telemetry_data = ser.read(1000)
+            telemetry_data = [str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100))]
+            result = self.parse(telemetry_data)
             if result == 200:
                 # Save data to file
-                datastorage.save(data)
+                datastorage.save_telemetry_data(telemetry_data)
+                # Save gps data as well!
                 # Display data (asynchronously)
-                plots.plotTelemetryData(data)
+                plots.plotTelemetryData(telemetry_data)
             else:
                 # TODO: log errors
                 pass
@@ -35,7 +38,7 @@ class Parser:
     def parse(self, data):
         status = 500  # error codes or correlation id
         print(len(data))
-        if len(data) == 2:  # TODO: implement parsing logic here
+        if len(data) == 5:  # TODO: implement parsing logic here
             return 200
         return status
 
