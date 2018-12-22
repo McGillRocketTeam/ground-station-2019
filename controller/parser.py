@@ -56,21 +56,21 @@ class Parser:
         #where slot 0 is the current array of seperated values from one telemetry reading
         #if slot 0 contains the int -1, then there was no data to be parsed
         #slot 1 is the remaining string
-        splitData = re.split(r"\$",data,1)
+        splitData = re.split(r"S",data,1)
         # print(splitData)
         remainingData = ''
         if len(splitData) == 2:
             remainingData = splitData[1]
         else:
             splitTry = re.split(r",",splitData[0])
-            if len(splitTry) == 8:
+            if len(splitTry) == 9:
                 return (splitTry,"")
             else:
                 return (-1,splitData[0])
         parsed = re.split(r",",splitData[0])
         # print(parsed)
-        while len(parsed) != 8:
-            splitData = re.split(r"\$",remainingData,1)
+        while len(parsed) != 9:
+            splitData = re.split(r"S",remainingData,1)
             parsed = re.split(r",",splitData[0])
             remainingData = splitData[1]
             # print(parsed)
@@ -85,7 +85,7 @@ class Parser:
         ser = serial.Serial(s_name)
 
         # Write to the device the marker of the start of the data
-        ser.write(bytes('$','utf-8'))
+        ser.write(bytes('S','utf-8'))
 
         # Gets randomly generated data
         randData = self.genRandomDataArray()
@@ -94,7 +94,7 @@ class Parser:
         for i in range(0,8):
             ser.write(bytes(str(randData[i]), 'utf-8'))
             if i == 7:
-                ser.write(bytes('', 'utf-8'))
+                ser.write(bytes(',E', 'utf-8'))
             else:
                 ser.write(bytes(',', 'utf-8'))
             i += 1
@@ -122,9 +122,10 @@ class Parser:
         return [lat,long,alt,time,temp,vel,acc,sat]
 
     def testMethod(self):
-        test = 'jadjbe19338,3$23'
+        test = 'jadjbeSSS19EE3E38,3S$23'
         test += self.serialSim()
         test += self.serialSim()
+        # test += 'abeESSSjdj'
         test += self.serialSim()
         test += self.serialSim()
         print("testData:" + test)
