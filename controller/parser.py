@@ -3,6 +3,7 @@ from model import datastorage
 import model.datastorage as DataStorage
 import views.plots as Plots
 from random import randint
+import random
 import re
 
 """
@@ -26,38 +27,77 @@ class Parser:
         # print('com5 is open', ser.isOpen())
         self.testMethod()
         #TODO: account for errors in the data being sent and read
-
+        readData = ''
         loopControl = True
         while loopControl:
             # telemetry_data = ser.read(1000)
+            simData = True #Controls if data is simulated or from actual serial reader
+            if simData:
+                readData += self.serialSim()
+                pass
+            else:
+                #read serial input
+                pass
             telemetry_data = [str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100))]
+            parsed_data = self.parse(readData)
             randomData = self.serialSim()
-            result = self.parse(randomData)
-            if result == 200:
+            result = self.parse(readData)
+            if result[0] == 200 or result[0] == 300:
+                #TODO: update data storage and telemetry data to account for full telemetry data
+                print(len(result[1]))
+                for dataChunk in result[1]:
+                    datastorage.save_telemetry_data(dataChunk)
+                    plots.plotTelemetryData(dataChunk)
+
+                    pass
                 # Save data to file
                 datastorage.save_telemetry_data(telemetry_data)
                 # Save gps data as well!
                 # Display data (asynchronously)
                 plots.plotTelemetryData(telemetry_data)
+
+                #update readData so it only contains unparsed text
+                readData = result[2]
             else:
                 # TODO: log errors
                 pass
 
     def parse(self, data):
+        """
+        :param data: the string of text that should be parsed
+        :return: a tuple containing (status, listOfParsedData, remainingString)
+        status: status code: 200 means parse was successful
+        listOfParsedData: a list containing lists of length 8 (the telemetry data)
+        remainingString: the data that was not able to be parsed at the end of the data string
+        """
         status = 500  # error codes or correlation id
-
-        print(len(data))
-        if len(data) == 5:  # TODO: implement parsing logic here
-            return (200,)
+        """
+        Error Codes: 
+        500 error occured
+        200 data was successfully parsed, remainingString is non-empty
+        300 data was successfully parsed, remaining string is empty
+        """
+        parseHelpedData = self.parseHelper(data)
+        dataList = [parseHelpedData[0][0:8]]
+        while len(re.split(r',',parseHelpedData[1])) > 9:
+            parseHelpedData = self.parseHelper(parseHelpedData[1])
+            dataList.append(parseHelpedData[0][0:8])
+            pass
+        if len(dataList) > 0:  # TODO: implement parsing logic here
+            if len(parseHelpedData) == 1:
+                return (300,dataList,'')
+            else:
+                return (200,dataList, parseHelpedData[1])
         return (status,)
 
     def parseHelper(self, data):
-        #this function takes in a string of any length, and returns a tuple,
-        #where slot 0 is the current array of seperated values from one telemetry reading
-        #if slot 0 contains the int -1, then there was no data to be parsed
-        #slot 1 is the remaining string
+        '''this function takes in a string of any length, and returns a tuple,
+        where slot 0 is the current array of seperated values from one telemetry reading
+        if slot 0 contains the int -1, then there was no data to be parsed
+        slot 1 is the remaining string
+        '''
+        #Takes the first set of data from the data string, or removes the garbage from the front of it
         splitData = re.split(r"S",data,1)
-        # print(splitData)
         remainingData = ''
         if len(splitData) == 2:
             remainingData = splitData[1]
@@ -68,11 +108,17 @@ class Parser:
             else:
                 return (-1,splitData[0])
         parsed = re.split(r",",splitData[0])
-        # print(parsed)
-        while len(parsed) != 9:
+        while len(parsed) != 9 :
             splitData = re.split(r"S",remainingData,1)
             parsed = re.split(r",",splitData[0])
-            remainingData = splitData[1]
+            if len(splitData) == 1:
+                remainingData = ''
+            else:
+                remainingData = splitData[1]
+            #TODO: fix: infinite loop when string ends with partial data piece
+
+            # if len(re.split(r',',remainingData)) < 12:
+            #     break
             # print(parsed)
             # print(remainingData)
             pass
@@ -119,7 +165,10 @@ class Parser:
         vel = randint(minRand, maxRand)
         acc = randint(minRand, maxRand)
         sat = randint(minRand, maxRand)
-        return [lat,long,alt,time,temp,vel,acc,sat]
+        intList = [lat,long,alt,time,temp,vel,acc,sat]
+        floatList = [(i + random.random()) for i in intList]
+        return floatList
+
 
     def testMethod(self):
         test = 'jadjbeSSS19EE3E38,3S$23'
@@ -127,13 +176,18 @@ class Parser:
         test += self.serialSim()
         # test += 'abeESSSjdj'
         test += self.serialSim()
+        # test += 'abeqSSEE1.232,242.2,44.3'
         test += self.serialSim()
+        test = test[0:len(test)-15]
+        # test += 'abcbsdlehEES,See'
         print("testData:" + test)
-        dataRecieved = self.parseHelper(test)
-        data2 = self.parseHelper(dataRecieved[1])
-        while dataRecieved[1] != '':
-            dataRecieved = self.parseHelper(dataRecieved[1])
-            print(dataRecieved)
+        parsedData = self.parse(test)
+        # dataRecieved = self.parseHelper(test)
+        # data2 = self.parseHelper(dataRecieved[1])
+        # while len(re.split(r',', dataRecieved[1])) > 9:
+        #     dataRecieved = self.parseHelper(dataRecieved[1])
+        #     print('Parse Helper Output: ')
+        #     print(dataRecieved)
 
 
 def main():
