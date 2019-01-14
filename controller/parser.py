@@ -28,7 +28,7 @@ class Parser:
         self.testMethod()
         #TODO: account for errors in the data being sent and read
         readData = ''
-        loopControl = True
+        loopControl = False
         while loopControl:
             # telemetry_data = ser.read(1000)
             simData = True #Controls if data is simulated or from actual serial reader
@@ -39,8 +39,7 @@ class Parser:
                 #read serial input
                 pass
             telemetry_data = [str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100))]
-            parsed_data = self.parse(readData)
-            randomData = self.serialSim()
+
             result = self.parse(readData)
             if result[0] == 200 or result[0] == 300:
                 #TODO: update data storage and telemetry data to account for full telemetry data
@@ -76,9 +75,16 @@ class Parser:
         500 error occured
         200 data was successfully parsed, remainingString is non-empty
         300 data was successfully parsed, remaining string is empty
+        400 no data was parsed from the string
         """
         parseHelpedData = self.parseHelper(data)
-        dataList = [parseHelpedData[0][0:8]]
+
+        if parseHelpedData[0] == -1:
+            dataList = []
+            status = 400
+        else:
+            dataList = [parseHelpedData[0][0:8]]
+
         while len(re.split(r',',parseHelpedData[1])) > 9:
             parseHelpedData = self.parseHelper(parseHelpedData[1])
             dataList.append(parseHelpedData[0][0:8])
@@ -90,6 +96,9 @@ class Parser:
                 return (200,dataList, parseHelpedData[1])
         return (status,)
 
+    # def parseHelperFull(self, data):
+    #     return self.parseHelper((data,8))
+
     def parseHelper(self, data):
         '''this function takes in a string of any length, and returns a tuple,
         where slot 0 is the current array of seperated values from one telemetry reading
@@ -97,6 +106,8 @@ class Parser:
         slot 1 is the remaining string
         '''
         #Takes the first set of data from the data string, or removes the garbage from the front of it
+        print("Parse helper")
+        print(data)
         splitData = re.split(r"S",data,1)
         remainingData = ''
         if len(splitData) == 2:
@@ -109,6 +120,7 @@ class Parser:
                 return (-1,splitData[0])
         parsed = re.split(r",",splitData[0])
         while len(parsed) != 9 :
+            print(parsed)
             splitData = re.split(r"S",remainingData,1)
             parsed = re.split(r",",splitData[0])
             if len(splitData) == 1:
@@ -123,6 +135,9 @@ class Parser:
             # print(remainingData)
             pass
         return (parsed,remainingData)
+
+    def gpsParseHelper(self, data):
+        pass
 
     def serialSim(self):
         #setup serial simulator
@@ -143,22 +158,42 @@ class Parser:
                 ser.write(bytes(',E', 'utf-8'))
             else:
                 ser.write(bytes(',', 'utf-8'))
-            i += 1
 
         # To read data written to slave serial
         return os.read(master, 1000).decode('utf-8')
+
+    def gpsSim(self):
+        #setup serial sim
+        master, slave = pty.openpty()
+        s_name = os.ttyname(slave)
+        ser = serial.Serial(s_name)
+
+        ser.write(bytes('S', 'utf-8'))
+
+        randomGpsData = self.genRandomGpsData()
+
+        for i in range(0,3):
+            ser.write(bytes(str(randomGpsData[i]), 'utf-8'))
+            if i == 2:
+                ser.write(bytes(',E', 'utf-8'))
+            else:
+                ser.write(bytes(',', 'utf-8'))
+
+        return os.read(master, 1000).decode('utf-8')
+
+
 
     def getSerialData(self):
         return self.serialSim()
         #TODO: implement actual fetching of serial data
 
     def genRandomDataArray(self):
-        minLat = 0
-        maxLat = 100
+        minLat = -90
+        maxLat = 90
         minRand = 0
         maxRand = 9000000
         lat = randint(minLat, maxLat)
-        long = randint(minLat, maxLat)
+        long = randint(2*minLat, 2*maxLat)
         alt = randint(minRand, maxRand)
         time = randint(minRand, maxRand)
         temp = randint(-273, maxRand)
@@ -169,25 +204,35 @@ class Parser:
         floatList = [(i + random.random()) for i in intList]
         return floatList
 
+    def genRandomGpsData(self):
+        lat = randint(-90,90) + random.random()
+        long = randint(-180,180) + random.random()
+        sat = randint(0,200)
+        return [lat,long,sat]
+
 
     def testMethod(self):
-        test = 'jadjbeSSS19EE3E38,3S$23'
-        test += self.serialSim()
-        test += self.serialSim()
-        # test += 'abeESSSjdj'
-        test += self.serialSim()
-        # test += 'abeqSSEE1.232,242.2,44.3'
-        test += self.serialSim()
-        test = test[0:len(test)-15]
-        # test += 'abcbsdlehEES,See'
-        print("testData:" + test)
-        parsedData = self.parse(test)
-        # dataRecieved = self.parseHelper(test)
-        # data2 = self.parseHelper(dataRecieved[1])
-        # while len(re.split(r',', dataRecieved[1])) > 9:
-        #     dataRecieved = self.parseHelper(dataRecieved[1])
-        #     print('Parse Helper Output: ')
-        #     print(dataRecieved)
+        # test = 'jadjbeSSS19EE3E38,3S$23'
+        # test += self.serialSim()
+        # test += self.serialSim()
+        # # test += 'abeESSSjdj'
+        # test += self.serialSim()
+        # # test += 'abeqSSEE1.232,242.2,44.3'
+        # test += self.serialSim()
+        # test = test[0:len(test)-15]
+        # test += 'E'
+        # # test += 'abcbsdlehEES,See'
+        # print("testData:" + test)
+        # testparsed = self.parse(test)
+        # print(testparsed)
+        # print(self.parse(testparsed[2]))
+        # '''+ self.serialSim()'''
+        test = self.serialSim()
+        self.parseHelper(test)
+
+        t1 = self.gpsSim()
+        print(t1)
+
 
 
 def main():
