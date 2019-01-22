@@ -35,8 +35,8 @@ class Plots:
 
         # axis ticks are every 2s
 
-        length = endx - yaxis_xloc;
-        time = 20;
+        length = endx - yaxis_xloc
+        time = 40
         canvas.create_text(screen_width/2, x_0 + 30, fill="white", text="time (s)")
 
         for x in range(1, length):
@@ -48,7 +48,7 @@ class Plots:
                 # time axis text
                 timeString = self.time_string(time)
                 canvas.create_text(x + yaxis_xloc, x_0 + 15, fill="white", text=timeString, tags="times")
-                time = time + 20
+                time = time + 40
 
             if x % 4 == 0:
                 canvas.create_line(x+yaxis_xloc, x_0, x+yaxis_xloc, x_0-3, fill="white")
@@ -122,7 +122,7 @@ class Plots:
         # auto range could be done but all points would have to be redrawn every time the range
         # changes which might be time consuming
 
-        time = int(yaxis_xloc - data[0])
+        time = int(yaxis_xloc + data[0])
         temp = int(x_0 - data[1])
         alt = int(x_1 - data[2])
         vel = int(x_2 - data[3])
@@ -134,7 +134,7 @@ class Plots:
 
 
         # plot if time is less than original time scale
-        if data[0] < 533:
+        if data[0] < 1533:
             # each point is 1x1, might want to increase the distance
             # between axis ticks if the points are not to be touching
             # temp, alt, vel, acc  need to be scaled based on the range for each
