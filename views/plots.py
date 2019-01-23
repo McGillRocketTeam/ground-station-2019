@@ -17,7 +17,7 @@ class Plots:
         global x_0
         x_0 = int(screen_height/12*7)                   # y location of x axis of upper graph
         xlower_yloc = int(screen_height - screen_height/8)      # y location of x axis of lower graph
-        endx = int(screen_width - yaxis_xloc)                   # x location of end of the graph
+        endx = int((screen_width - yaxis_xloc) / 2)                   # x location of end of the graph
         maxY_upper = int(screen_height/12)                      # y location of max height for upper
         maxY_lower = int(screen_height/12*8)                    # y location of max height for lower
         global x_1
@@ -37,7 +37,7 @@ class Plots:
 
         length = endx - yaxis_xloc
         time = 40
-        canvas.create_text(screen_width/2, x_0 + 30, fill="white", text="time (s)")
+        canvas.create_text(screen_width/4, x_0 + 30, fill="white", text="time (s)")
 
         for x in range(1, length):
             if x % 40 == 0:
@@ -56,9 +56,7 @@ class Plots:
                 canvas.create_line(x + yaxis_xloc, x_0 + 2*x_1, x + yaxis_xloc, x_0 + 2*x_1 - 3, fill="white")
                 canvas.create_line(x + yaxis_xloc, x_0 + 3*x_1, x + yaxis_xloc, x_0+ 3*x_1 - 3, fill="white")
 
-        canvas.create_line(yaxis_xloc, xlower_yloc, endx, xlower_yloc, fill="white")        # lower graph x axis
         canvas.create_line(yaxis_xloc, maxY_upper, yaxis_xloc, x_0, fill="white")   # y axis upper graph
-        canvas.create_line(yaxis_xloc, maxY_lower, yaxis_xloc, xlower_yloc, fill="white")   # y axis lower graph
 
         # Temperature, Altitude, Velocity, Acceleration vs time plot
         height_each = (x_0 - maxY_upper)/24
@@ -81,6 +79,12 @@ class Plots:
         # Bottom plot
         # NEED RANGE ESTIMATES
 
+        startX = endx + 100  # Start of gps graph is ~ end of telemetry graph
+
+        canvas.create_line(startX, xlower_yloc, screen_width - 75, xlower_yloc, fill="white")        # lower graph x axis
+        canvas.create_line(startX, maxY_lower, startX, screen_height, fill="white")   # y axis lower graph
+
+        """
         # y axis
         for y in range(0, xlower_yloc - maxY_lower):
             if y % 4 == 0:
@@ -96,7 +100,7 @@ class Plots:
 
             if x % 40 == 0:
                 canvas.create_line(yaxis_xloc + x, xlower_yloc + 4, yaxis_xloc + x, xlower_yloc - 4, fill="white")
-
+        """
 
         canvas.pack()
         window.update()
@@ -134,7 +138,7 @@ class Plots:
 
 
         # plot if time is less than original time scale
-        if data[0] < 1533:
+        if data[0] < 600:
             # each point is 1x1, might want to increase the distance
             # between axis ticks if the points are not to be touching
             # temp, alt, vel, acc  need to be scaled based on the range for each
