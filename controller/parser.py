@@ -8,6 +8,7 @@ import re
 
 """
 data format: $ lat long alt time temp vel acc sat
+backup data: lat, long, alt, sat#
 """
 class Parser:
     def __init__(self, datastorage, plots):
@@ -25,10 +26,10 @@ class Parser:
         else:
         """
         # print('com5 is open', ser.isOpen())
-        self.testMethod()
+        # self.testMethod()
         #TODO: account for errors in the data being sent and read
         readData = ''
-        loopControl = False
+        loopControl = True
         while loopControl:
             # telemetry_data = ser.read(1000)
             simData = True #Controls if data is simulated or from actual serial reader
@@ -40,7 +41,7 @@ class Parser:
                 pass
             telemetry_data = [str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100))]
 
-            result = self.parse(readData)
+            result = self.parseFull((readData,8))
             if result[0] == 200 or result[0] == 300:
                 #TODO: update data storage and telemetry data to account for full telemetry data
                 print(len(result[1]))
@@ -61,9 +62,9 @@ class Parser:
                 # TODO: log errors
                 pass
 
-    def parse(self, data):
+    def parseFull(self, data):
         """
-        :param data: the string of text that should be parsed
+        :param data: the string of text that should be parsed in a tuple with length of datastring
         :return: a tuple containing (status, listOfParsedData, remainingString)
         status: status code: 200 means parse was successful
         listOfParsedData: a list containing lists of length 8 (the telemetry data)
@@ -77,7 +78,9 @@ class Parser:
         300 data was successfully parsed, remaining string is empty
         400 no data was parsed from the string
         """
-        parseHelpedData = self.parseHelper(data)
+        dataString = data[0]
+        dataLength = data[1]
+        parseHelpedData = self.parseHelper((dataString,dataLength))
 
         if parseHelpedData[0] == -1:
             dataList = []
@@ -85,9 +88,9 @@ class Parser:
         else:
             dataList = [parseHelpedData[0][0:8]]
 
-        while len(re.split(r',',parseHelpedData[1])) > 9:
-            parseHelpedData = self.parseHelper(parseHelpedData[1])
-            dataList.append(parseHelpedData[0][0:8])
+        while len(re.split(r',',parseHelpedData[1])) > (dataLength+1):
+            parseHelpedData = self.parseHelper((parseHelpedData[1],dataLength))
+            dataList.append(parseHelpedData[0][0:dataLength])
             pass
         if len(dataList) > 0:  # TODO: implement parsing logic here
             if len(parseHelpedData) == 1:
@@ -105,22 +108,22 @@ class Parser:
         if slot 0 contains the int -1, then there was no data to be parsed
         slot 1 is the remaining string
         '''
+        #split the data tuple into the actual data, and the length of the data string
+        actualData = data[0]
+        stringLength = data[1]
         #Takes the first set of data from the data string, or removes the garbage from the front of it
-        print("Parse helper")
-        print(data)
-        splitData = re.split(r"S",data,1)
+        splitData = re.split(r"S",actualData,1)
         remainingData = ''
         if len(splitData) == 2:
             remainingData = splitData[1]
         else:
             splitTry = re.split(r",",splitData[0])
-            if len(splitTry) == 9:
+            if len(splitTry) == (stringLength+1):
                 return (splitTry,"")
             else:
                 return (-1,splitData[0])
         parsed = re.split(r",",splitData[0])
-        while len(parsed) != 9 :
-            print(parsed)
+        while len(parsed) != (stringLength+1) :
             splitData = re.split(r"S",remainingData,1)
             parsed = re.split(r",",splitData[0])
             if len(splitData) == 1:
@@ -136,8 +139,46 @@ class Parser:
             pass
         return (parsed,remainingData)
 
-    def gpsParseHelper(self, data):
-        pass
+    # def parseGps(self, data):
+    #     #TODO: fix parsing if there are more than 2 data strings
+    #     """
+    #             :param data: the string of text that should be parsed
+    #             :return: a tuple containing (status, listOfParsedData, remainingString)
+    #             status: status code: 200 means parse was successful
+    #             listOfParsedData: a list containing lists of length 8 (the telemetry data)
+    #             remainingString: the data that was not able to be parsed at the end of the data string
+    #             """
+    #     gpsStatus = 50  # error codes or correlation id
+    #     """
+    #     Error Codes:
+    #     50 error occured
+    #     20 data was successfully parsed, remainingString is non-empty
+    #     30 data was successfully parsed, remaining string is empty
+    #     40 no data was parsed from the string
+    #     """
+    #     parseHelpedData = self.parseHelperGps(data)
+    #
+    #     if parseHelpedData[0] == -1:
+    #         dataList = []
+    #         gpsStatus = 40
+    #     else:
+    #         dataList = [parseHelpedData[0][0:3]]
+    #
+    #     while len(re.split(r',', parseHelpedData[1])) > 4:
+    #         parseHelpedData = self.parseHelperGps(parseHelpedData[1])
+    #         dataList.append(parseHelpedData[0][0:3])
+    #         print(dataList)
+    #         pass
+    #     if len(dataList) > 0:  # TODO: implement parsing logic here
+    #         if len(parseHelpedData) == 1:
+    #             return (30, dataList, '')
+    #         else:
+    #             return (20, dataList, parseHelpedData[1])
+    #     return (gpsStatus,)
+    #     pass
+
+    # def parseHelperGps(self, data):
+    #     return self.parseHelper((data,3))
 
     def serialSim(self):
         #setup serial simulator
@@ -172,9 +213,9 @@ class Parser:
 
         randomGpsData = self.genRandomGpsData()
 
-        for i in range(0,3):
+        for i in range(0,4):
             ser.write(bytes(str(randomGpsData[i]), 'utf-8'))
-            if i == 2:
+            if i == 3:
                 ser.write(bytes(',E', 'utf-8'))
             else:
                 ser.write(bytes(',', 'utf-8'))
@@ -207,8 +248,9 @@ class Parser:
     def genRandomGpsData(self):
         lat = randint(-90,90) + random.random()
         long = randint(-180,180) + random.random()
+        alt = randint(0,50000) + random.random()
         sat = randint(0,200)
-        return [lat,long,sat]
+        return [lat,long,alt,sat]
 
 
     def testMethod(self):
@@ -228,10 +270,33 @@ class Parser:
         # print(self.parse(testparsed[2]))
         # '''+ self.serialSim()'''
         test = self.serialSim()
-        self.parseHelper(test)
+        test += self.serialSim()
+        for x in range(10):
+            test += self.serialSim()
+            # test =  test[:-randint(1,33)]
+        tr = self.parseFull((test,8))
+        print(tr)
 
+        t2 = self.parseFull((tr[2],8))
+        print(t2)
+
+
+        print("Gps sim")
         t1 = self.gpsSim()
         print(t1)
+        for x in range(20):
+            t1 += self.gpsSim()
+            t1 = t1[:-randint(1,15)] #removes a random amount from the end of the string
+        t1 += self.gpsSim()
+        t1 += self.gpsSim()
+        t1 += self.gpsSim()
+        print(t1)
+        # tp = self.parseHelperGps(t1)
+        # print(tp)
+
+        tf = self.parseFull((t1,4))
+        print(tf)
+
 
 
 
