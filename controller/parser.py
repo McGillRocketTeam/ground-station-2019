@@ -5,12 +5,16 @@ import views.plots as Plots
 from random import randint
 import random
 import re
+import datetime
+import time
 
 """
 data format: $ lat long alt time temp vel acc sat
 backup data: lat, long, alt, sat#
 """
 class Parser:
+    start_time = 0
+
     def __init__(self, datastorage, plots):
         """
         self.port = "COM2"
@@ -29,8 +33,12 @@ class Parser:
         # self.testMethod()
         #TODO: account for errors in the data being sent and read
         readData = ''
+        global start_time
+        start_time = round(datetime.datetime.utcnow().timestamp())
+
         loopControl = True
         while loopControl:
+            time.sleep(0.8)
             # telemetry_data = ser.read(1000)
             simData = True #Controls if data is simulated or from actual serial reader
             if simData:
@@ -39,22 +47,22 @@ class Parser:
             else:
                 #read serial input
                 pass
-            telemetry_data = [str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100))]
+            #telemetry_data = [str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100))]
 
             result = self.parseFull((readData,8))
             if result[0] == 200 or result[0] == 300:
                 #TODO: update data storage and telemetry data to account for full telemetry data
-                print(len(result[1]))
+                # print(len(result[1]))
                 for dataChunk in result[1]:
                     datastorage.save_telemetry_data(dataChunk)
                     plots.plotTelemetryData(dataChunk)
 
                     pass
                 # Save data to file
-                datastorage.save_telemetry_data(telemetry_data)
+                #datastorage.save_telemetry_data(telemetry_data)
                 # Save gps data as well!
                 # Display data (asynchronously)
-                plots.plotTelemetryData(telemetry_data)
+                #plots.plotTelemetryData(telemetry_data)
 
                 #update readData so it only contains unparsed text
                 readData = result[2]
@@ -180,28 +188,31 @@ class Parser:
     # def parseHelperGps(self, data):
     #     return self.parseHelper((data,3))
 
-    def serialSim(self):
-        #setup serial simulator
-        master, slave = pty.openpty()
-        s_name = os.ttyname(slave)
-        ser = serial.Serial(s_name)
 
-        # Write to the device the marker of the start of the data
-        ser.write(bytes('S','utf-8'))
+    def serialSim(self):
+        # #setup serial simulator
+        # master, slave = pty.openpty()
+        # s_name = os.ttyname(slave)
+        # ser = serial.Serial(s_name)
+        #
+        # # Write to the device the marker of the start of the data
+        # ser.write(bytes('S','utf-8'))
 
         # Gets randomly generated data
         randData = self.genRandomDataArray()
 
-        # Writes random data seperated by commas, ending with a pound sign
-        for i in range(0,8):
-            ser.write(bytes(str(randData[i]), 'utf-8'))
-            if i == 7:
-                ser.write(bytes(',E', 'utf-8'))
-            else:
-                ser.write(bytes(',', 'utf-8'))
-
-        # To read data written to slave serial
-        return os.read(master, 1000).decode('utf-8')
+        # # Writes random data seperated by commas, ending with a pound sign
+        # for i in range(0,8):
+        #     ser.write(bytes(str(randData[i]), 'utf-8'))
+        #     if i == 7:
+        #         ser.write(bytes(',E', 'utf-8'))
+        #     else:
+        #         ser.write(bytes(',', 'utf-8'))
+        #
+        # # To read data written to slave serial
+        # return os.read(master, 1000).decode('utf-8')
+        global start_time
+        return 'S' + str(randData[0]) + ',' + str(randData[1]) + ',' + str(randData[2]) + ',' + str(randData[3]) + ',' + str(randData[4]) + ',' + str(randData[5]) + ',' + str(randData[6]) + ',' + str(randData[7]) + ',E'
 
     def gpsSim(self):
         #setup serial sim
@@ -232,16 +243,19 @@ class Parser:
         minLat = -90
         maxLat = 90
         minRand = 0
-        maxRand = 9000000
+        maxRand = 100
         lat = randint(minLat, maxLat)
         long = randint(2*minLat, 2*maxLat)
         alt = randint(minRand, maxRand)
         time = randint(minRand, maxRand)
-        temp = randint(-273, maxRand)
+        temp = randint(0, maxRand)
         vel = randint(minRand, maxRand)
         acc = randint(minRand, maxRand)
         sat = randint(minRand, maxRand)
-        intList = [lat,long,alt,time,temp,vel,acc,sat]
+        global start_time
+        time = round(datetime.datetime.utcnow().timestamp()) - start_time
+        #intList = [lat,long,alt,time,temp,vel,acc,sat]
+        intList = [time,temp,alt,vel,acc,lat,long,sat]
         floatList = [(i + random.random()) for i in intList]
         return floatList
 

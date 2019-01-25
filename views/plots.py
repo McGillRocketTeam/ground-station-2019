@@ -125,12 +125,12 @@ class Plots:
         # these need to be scaled based on the ranges of the y axis
         # auto range could be done but all points would have to be redrawn every time the range
         # changes which might be time consuming
-
-        time = int(yaxis_xloc + data[0])
-        temp = int(x_0 - data[1])
-        alt = int(x_1 - data[2])
-        vel = int(x_2 - data[3])
-        acc = int(x_3 - data[4])
+        print(data)
+        time = int(yaxis_xloc + float(data[0]))
+        temp = int(x_0 - float(data[1]))
+        alt = int(x_1 - float(data[2]))
+        vel = int(x_2 - float(data[3]))
+        acc = int(x_3 - float(data[4]))
 
         # save values to array so that the points can be coloured over and moved
         # need to be able to keep track of the corresponding time value (unless its a value for every second
@@ -138,7 +138,7 @@ class Plots:
 
 
         # plot if time is less than original time scale
-        if data[0] < 600:
+        if float(data[0]) < 600:
             # each point is 1x1, might want to increase the distance
             # between axis ticks if the points are not to be touching
             # temp, alt, vel, acc  need to be scaled based on the range for each
