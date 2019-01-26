@@ -55,7 +55,8 @@ class Parser:
                 # print(len(result[1]))
                 for dataChunk in result[1]:
                     datastorage.save_telemetry_data(dataChunk)
-                    plots.plotTelemetryData(dataChunk)
+                    plots.plotTelemetryData()
+                    plots.update()
 
                     pass
                 # Save data to file

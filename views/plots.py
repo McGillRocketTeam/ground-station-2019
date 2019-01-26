@@ -1,14 +1,161 @@
-from tkinter import *
-from array import *
+import matplotlib
+
+matplotlib.use("TkAgg")
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+from matplotlib import style
+import tkinter as tk
+
+LARGE_FONT = ("VERDANA", 12)
+style.use("ggplot")
+
+f = Figure(figsize=(5, 5), dpi=100)
+a = f.add_subplot(411)
+b = f.add_subplot(412)
+c = f.add_subplot(413)
+d = f.add_subplot(414)
+matplotlib.rcParams['lines.linewidth'] = 3
 
 
-class Plots:
-    def __init__(self):
-        global window
-        window = Tk()
-        screen_width = window.winfo_screenwidth()
-        screen_height = window.winfo_screenheight()
-        global canvas
+class Plots(tk.Tk):
+    def __init__(self, *args, **kwargs):
+        tk.Tk.__init__(self, *args, **kwargs)
+        tk.Tk.wm_title(self, "MRT GUI")
+
+        # TODO Make sure 'zoomed' state works on all laptops
+        self.state('zoomed')  # Make fullscreen by default
+
+        container = tk.Frame(self, bg='blue')
+        container.pack(side="top", fill="both", expand=True)
+        container.grid_rowconfigure(0, weight=1)
+        container.grid_columnconfigure(0, weight=1)
+
+        self.frames = {}
+        frame = GraphPage(container)
+        frame.configure(background='black')
+        self.frame = frame
+        frame.grid(row=0, column=0, sticky="nsew")
+
+        self.show_frame()  # Display frame on window
+
+    def show_frame(self):
+        frame = self.frame
+        frame.tkraise()
+
+    def plot_telemetry_data(self):
+        # TODO Add exception handling for opening the file
+        file = open("../storage/dataTelemetry.csv", "r")  # Open data file for plotting
+        pull_data = file.read()
+        data_list = pull_data.split('\n')
+        time_list = []
+        temperature_list = []
+        altitude_list = []
+        velocity_list = []
+        acceleration_list = []
+
+        first_line = True
+        for eachLine in data_list:
+            if first_line:
+                first_line = False  # Don't read data if first line, since it is the header
+            elif len(eachLine) > 1:
+                currTime, time, temperature, altitude, velocity, acceleration = eachLine.split(
+                    ',')  # Split each line by comma
+                time_list.append(float(time))  # Add each value to proper list
+                temperature_list.append(float(temperature))
+                altitude_list.append(float(altitude))
+                velocity_list.append(float(velocity))
+                acceleration_list.append(float(acceleration))
+        file.close()
+
+        a.clear()
+        a.plot(time_list, temperature_list)  # Graph temperature
+        a.set_ylabel('Temperature(Celcius)')
+        a.set_facecolor('black')
+
+        b.clear()
+        b.plot(time_list, altitude_list)  # Graph altitude
+        b.set_ylabel('Altitude(m)')
+        b.set_facecolor('black')
+
+        c.clear()
+        c.plot(time_list, velocity_list)  # Graph velocity
+        c.set_ylabel('Velocity(m/s)')
+        c.set_facecolor('black')
+
+        d.clear()
+        d.plot(time_list, acceleration_list)  # Graph acceleration
+        d.set_xlabel('Time(s)')
+        d.set_ylabel('Acceleration(m/s^2)')
+        d.set_facecolor('black')
+
+
+class GraphPage(tk.Frame):
+
+    def __init__(self, parent):
+        tk.Frame.__init__(self, parent)
+
+        label = tk.Label(self, text="MRT Live Graph Demo", font=LARGE_FONT)
+        label.pack(pady=10, padx=10)
+
+        canvas = FigureCanvasTkAgg(f, self)
+        canvas.draw()
+        canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+
+
+"""
+The following could be useful if we decided to use multiple pages in the application
+class StartPage(tk.Frame):
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        label = tk.Label(self, text="Start Page", font=LARGE_FONT)
+        label.pack(pady=10, padx=10)
+
+        button = ttk.Button(self, text="Visit Page 1",
+                            command=lambda: controller.show_frame(PageOne))
+        button.pack()
+
+        button2 = ttk.Button(self, text="Visit Page 2",
+                             command=lambda: controller.show_frame(PageTwo))
+        button2.pack()
+
+        button3 = ttk.Button(self, text="Graph Page",
+                             command=lambda: controller.show_frame(PageThree))
+        button3.pack()
+
+
+class PageOne(tk.Frame):
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        label = tk.Label(self, text="Page One!!!", font=LARGE_FONT)
+        label.pack(pady=10, padx=10)
+
+        button1 = ttk.Button(self, text="Back to Home",
+                             command=lambda: controller.show_frame(StartPage))
+        button1.pack()
+
+        button2 = ttk.Button(self, text="Page Two",
+                             command=lambda: controller.show_frame(PageTwo))
+        button2.pack()
+
+
+class PageTwo(tk.Frame):
+
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        label = tk.Label(self, text="Page Two!!!", font=LARGE_FONT)
+        label.pack(pady=10, padx=10)
+
+        button1 = ttk.Button(self, text="Back to Home",
+                             command=lambda: controller.show_frame(StartPage))
+        button1.pack()
+
+        button2 = ttk.Button(self, text="Page One",
+                             command=lambda: controller.show_frame(PageOne))
+        button2.pack()
+"""
+"""
         canvas = Canvas(window, width=screen_width, height=screen_height, bg="black")
 
         # axis lines
@@ -84,7 +231,7 @@ class Plots:
         canvas.create_line(startX, xlower_yloc, screen_width - 75, xlower_yloc, fill="white")        # lower graph x axis
         canvas.create_line(startX, maxY_lower, startX, screen_height, fill="white")   # y axis lower graph
 
-        """
+
         # y axis
         for y in range(0, xlower_yloc - maxY_lower):
             if y % 4 == 0:
@@ -100,7 +247,7 @@ class Plots:
 
             if x % 40 == 0:
                 canvas.create_line(yaxis_xloc + x, xlower_yloc + 4, yaxis_xloc + x, xlower_yloc - 4, fill="white")
-        """
+
 
         canvas.pack()
         window.update()
@@ -161,4 +308,4 @@ class Plots:
 
         # time2 = self.time_string(time)
         # ^ call to make the time a string x:xx format
-
+        """
