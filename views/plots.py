@@ -3,17 +3,25 @@ import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-from matplotlib import style
+from matplotlib import style, animation
 import tkinter as tk
+import matplotlib.pyplot as plt
 
 LARGE_FONT = ("VERDANA", 12)
 style.use("ggplot")
 
-f = Figure(figsize=(5, 5), dpi=100)
-a = f.add_subplot(411)
-b = f.add_subplot(412)
-c = f.add_subplot(413)
-d = f.add_subplot(414)
+f = plt.figure()    # Add all plots to main window
+a = plt.subplot2grid((4, 2), (0, 0))
+a.set_facecolor('black')
+b = plt.subplot2grid((4, 2), (1, 0))
+b.set_facecolor('black')
+c = plt.subplot2grid((4, 2), (2, 0))
+c.set_facecolor('black')
+d = plt.subplot2grid((4, 2), (3, 0))
+d.set_facecolor('black')
+e = plt.subplot2grid((4, 2), (0, 1), colspan=2, rowspan=4)
+e.set_facecolor('black')
+
 matplotlib.rcParams['lines.linewidth'] = 3
 
 
@@ -30,8 +38,8 @@ class Plots(tk.Tk):
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
-        self.frames = {}
         frame = GraphPage(container)
+        self.page = GraphPage
         frame.configure(background='black')
         self.frame = frame
         frame.grid(row=0, column=0, sticky="nsew")
@@ -41,6 +49,9 @@ class Plots(tk.Tk):
     def show_frame(self):
         frame = self.frame
         frame.tkraise()
+
+    def refresh(self):
+        self.page.canvas.draw()
 
     def plot_telemetry_data(self):
         # TODO Add exception handling for opening the file
@@ -70,31 +81,28 @@ class Plots(tk.Tk):
         a.clear()
         a.plot(time_list, temperature_list)  # Graph temperature
         a.set_ylabel('Temperature(Celcius)')
-        a.set_facecolor('black')
 
         b.clear()
         b.plot(time_list, altitude_list)  # Graph altitude
         b.set_ylabel('Altitude(m)')
-        b.set_facecolor('black')
 
         c.clear()
         c.plot(time_list, velocity_list)  # Graph velocity
         c.set_ylabel('Velocity(m/s)')
-        c.set_facecolor('black')
 
         d.clear()
         d.plot(time_list, acceleration_list)  # Graph acceleration
         d.set_xlabel('Time(s)')
         d.set_ylabel('Acceleration(m/s^2)')
-        d.set_facecolor('black')
+
+        # plt.draw()
 
 
 class GraphPage(tk.Frame):
-
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
 
-        label = tk.Label(self, text="MRT Live Graph Demo", font=LARGE_FONT)
+        label = tk.Label(self, text="MRT Live Graph", font=LARGE_FONT)
         label.pack(pady=10, padx=10)
 
         canvas = FigureCanvasTkAgg(f, self)
