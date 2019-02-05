@@ -22,6 +22,11 @@ class DataStorage:
             # TODO: Possibly reformat the time to include seconds etc...
         file.close()
 
+    # Saves gps data
+    def save_gps_data(self, data):
+        #TODO: finish
+        pass
+
 
 # For testing purposes only
 if __name__ == '__main__':

@@ -24,6 +24,8 @@ class Parser:
         while True:
             # telemetry_data = ser.read(1000)
             telemetry_data = [str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100))]
+
+
             result = self.parse(telemetry_data)
             if result == 200:
                 # Save data to file
@@ -33,6 +35,17 @@ class Parser:
                 plots.plotTelemetryData(telemetry_data)
             else:
                 # TODO: log errors
+                # If not all data
+                pass
+                # If not properly formatted
+            # gps_data = [longitude, latitude]
+            gps_data = [str(randint(0, 100)), str(randint(0, 100))]
+            result = self.parse(gps_data)
+            if result == 250: ## TODO: Should this be in one if statement?
+                datastorage.save_gps_data(gps_data)
+                plots.plotLatLong(gps_data)
+            else:
+                # log errors
                 pass
 
     def parse(self, data):
@@ -40,6 +53,8 @@ class Parser:
         print(len(data))
         if len(data) == 5:  # TODO: implement parsing logic here
             return 200
+        elif len(data) == 2:
+            return 250 ## TODO: very random number, why?
         return status
 
 
