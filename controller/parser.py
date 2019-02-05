@@ -47,6 +47,7 @@ class Parser:
             else:
                 #read serial input
                 pass
+            #TODO: save the full telemetry string here
             #telemetry_data = [str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100))]
 
             result = self.parseFull((readData,8))
