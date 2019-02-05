@@ -1,4 +1,4 @@
-import serial, os, pty
+import serial, os
 from model import datastorage
 import model.datastorage as DataStorage
 import views.plots as Plots
@@ -55,7 +55,7 @@ class Parser:
                 # print(len(result[1]))
                 for dataChunk in result[1]:
                     datastorage.save_telemetry_data(dataChunk)
-                    plots.plotTelemetryData()
+                    plots.plot_telemetry_data()
                     plots.update()
 
                     pass
@@ -259,6 +259,7 @@ class Parser:
         intList = [time,temp,alt,vel,acc,lat,long,sat]
         floatList = [(i + random.random()) for i in intList]
         return floatList
+        # return intList
 
     def genRandomGpsData(self):
         lat = randint(-90,90) + random.random()
