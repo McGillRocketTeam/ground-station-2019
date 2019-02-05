@@ -55,7 +55,7 @@ class Plots(tk.Tk):
 
     def plot_telemetry_data(self):
         # TODO Add exception handling for opening the file
-        file = open("../storage/dataTelemetry.csv", "r")  # Open data file for plotting
+        file = open("pkg/storage/dataTelemetry.csv", "r")  # Open data file for plotting
         pull_data = file.read()
         data_list = pull_data.split('\n')
         time_list = []

@@ -7,14 +7,14 @@ class DataStorage:
 
     # Creates a new file where the data will be stored
     def __init__(self):
-        with open('../storage/dataTelemetry.csv', 'w+') as csvfile_telemetry:
+        with open('pkg/storage/dataTelemetry.csv', 'w+') as csvfile_telemetry:
             filewriter = csv.writer(csvfile_telemetry, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
             filewriter.writerow(['Current Time', 'Time', 'Temperature', 'Altitude', 'Velocity', 'Acceleration'])
             csvfile_telemetry.close()
 
     # Appends the data to the end of the file
     def save_telemetry_data(self, data):
-        file = open("../storage/dataTelemetry.csv", "a+")
+        file = open("pkg/storage/dataTelemetry.csv", "a+")
         filewriter = csv.writer(file, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
         if len(data) == 5:  # TODO: Consider scenarios where the input data is different
             now = datetime.datetime.now()
