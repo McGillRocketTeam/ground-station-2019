@@ -1,6 +1,6 @@
 import serial, os
-from ..model import datastorage as DataStorage
-from ..views import plots as Plots
+from pkg.model import datastorage as DataStorage
+from pkg.views import plots as Plots
 from random import randint
 import random
 import re
