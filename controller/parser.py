@@ -1,4 +1,4 @@
-import serial, os, pty
+import serial, os
 from model import datastorage
 import model.datastorage as DataStorage
 import views.plots as Plots
@@ -35,30 +35,46 @@ class Parser:
         readData = ''
         global start_time
         start_time = round(datetime.datetime.utcnow().timestamp())
-
+        decreasing = False
         loopControl = True
+        c1 = 0
+        c2 = 0
         while loopControl:
-            time.sleep(0.8)
+            time.sleep(0.1)
             # telemetry_data = ser.read(1000)
-            simData = True #Controls if data is simulated or from actual serial reader
-            if simData:
-                readData += self.serialSim()
-                pass
-            else:
-                #read serial input
-                pass
-            #telemetry_data = [str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100))]
+            #simData = True #Controls if data is simulated or from actual serial reader
+            #if simData:
+            #    readData += self.serialSim()
+            #    pass
+            #else:
+            #    #read serial input
+            #    pass
+            telemetry_data = [c1, c2, c2, c2, c2]
 
-            result = self.parseFull((readData,8))
-            if result[0] == 200 or result[0] == 300:
+            #result = self.parseFull((readData,8))
+            #if result[0] == 200 or result[0] == 300:
                 #TODO: update data storage and telemetry data to account for full telemetry data
                 # print(len(result[1]))
-                for dataChunk in result[1]:
-                    datastorage.save_telemetry_data(dataChunk)
-                    plots.plotTelemetryData()
-                    plots.update()
+                #for dataChunk in result[1]:
+            datastorage.save_telemetry_data(telemetry_data)
+            plots.plot_telemetry_data()
+            plots.update()
 
-                    pass
+            c1 += 1
+
+            if c2 > 30:
+                decreasing = True
+            elif c2 < 2:
+                decreasing = False
+
+            if decreasing:
+                c2 -= 1
+            else:
+                c2 += 1
+
+
+
+                    #pass
                 # Save data to file
                 #datastorage.save_telemetry_data(telemetry_data)
                 # Save gps data as well!
@@ -66,27 +82,29 @@ class Parser:
                 #plots.plotTelemetryData(telemetry_data)
 
                 #update readData so it only contains unparsed text
-                readData = result[2]
-            else:
+                #readData = result[2]
+            #else:
                 # TODO: log errors
-                pass
+                #pass
 
+    """
+    
     def parseFull(self, data):
-        """
+        
         :param data: the string of text that should be parsed in a tuple with length of datastring
         :return: a tuple containing (status, listOfParsedData, remainingString)
         status: status code: 200 means parse was successful
         listOfParsedData: a list containing lists of length 8 (the telemetry data)
         remainingString: the data that was not able to be parsed at the end of the data string
-        """
+        
         status = 500  # error codes or correlation id
-        """
+        
         Error Codes: 
         500 error occured
         200 data was successfully parsed, remainingString is non-empty
         300 data was successfully parsed, remaining string is empty
         400 no data was parsed from the string
-        """
+        
         dataString = data[0]
         dataLength = data[1]
         parseHelpedData = self.parseHelper((dataString,dataLength))
@@ -112,11 +130,11 @@ class Parser:
     #     return self.parseHelper((data,8))
 
     def parseHelper(self, data):
-        '''this function takes in a string of any length, and returns a tuple,
+        this function takes in a string of any length, and returns a tuple,
         where slot 0 is the current array of seperated values from one telemetry reading
         if slot 0 contains the int -1, then there was no data to be parsed
         slot 1 is the remaining string
-        '''
+        
         #split the data tuple into the actual data, and the length of the data string
         actualData = data[0]
         stringLength = data[1]
@@ -150,21 +168,21 @@ class Parser:
 
     # def parseGps(self, data):
     #     #TODO: fix parsing if there are more than 2 data strings
-    #     """
+    #     
     #             :param data: the string of text that should be parsed
     #             :return: a tuple containing (status, listOfParsedData, remainingString)
     #             status: status code: 200 means parse was successful
     #             listOfParsedData: a list containing lists of length 8 (the telemetry data)
     #             remainingString: the data that was not able to be parsed at the end of the data string
-    #             """
+    #             
     #     gpsStatus = 50  # error codes or correlation id
-    #     """
+    #     
     #     Error Codes:
     #     50 error occured
     #     20 data was successfully parsed, remainingString is non-empty
     #     30 data was successfully parsed, remaining string is empty
     #     40 no data was parsed from the string
-    #     """
+    #     
     #     parseHelpedData = self.parseHelperGps(data)
     #
     #     if parseHelpedData[0] == -1:
@@ -311,6 +329,8 @@ class Parser:
 
         tf = self.parseFull((t1,4))
         print(tf)
+
+    """
 
 
 
