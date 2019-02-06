@@ -1,5 +1,4 @@
-#import serial
-import os
+import serial, os
 from model import datastorage
 import model.datastorage as DataStorage
 import views.plots as Plots

@@ -20,7 +20,9 @@ class DataStorage:
     def save_telemetry_data(self, data):
         file = open("../storage/dataTelemetry.csv", "a+")
         filewriter = csv.writer(file, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        if len(data) == 5: ## THE TELEMETRY DATA SHOULD HAVE A LENGTH OF 5
+        # NOTE: len(data) should have a length of 5
+        if len(data) == 8:  # TODO: Consider scenarios where the input data is different
+          
             now = datetime.datetime.now()
             ## This is the current format for saving the telemetry data
             filewriter.writerow([now.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4]])
