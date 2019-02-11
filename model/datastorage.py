@@ -10,6 +10,10 @@ class DataStorage:
             filewriter = csv.writer(csvfile_telemetry, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
             filewriter.writerow(['Current Time', 'Time', 'Temperature', 'Altitude', 'Velocity', 'Acceleration'])
             csvfile_telemetry.close()
+        with open('../storage/dataGps.csv', 'w+') as csvfile_gps:
+            filewriter = csv.writer(csvfile_gps, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            filewriter.writerow(['Current Time', 'Latitude', 'Longitude', 'Number of Satellites'])
+            csvfile_gps.close()
         with open ('../storage/rawData.txt', 'w+') as rawData:
             rawData.write("Raw Data:\n____________________"
                           "____________________\n")
@@ -26,6 +30,14 @@ class DataStorage:
             now = datetime.datetime.now()
             ## This is the current format for saving the telemetry data
             filewriter.writerow([now.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4]])
+        file.close()
+
+    def save_gps_data(self, data):
+        file = open("../storage/dataGps.csv", "a+")
+        filewriter = csv.writer(file, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        if len(data) == 3:
+            now = datetime.datetime.now()
+            filewriter.writerow([now.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2]])
         file.close()
 
     def save_raw_data(self, data):
