@@ -7,6 +7,8 @@ from matplotlib import style, animation
 import tkinter as tk
 import matplotlib.pyplot as plt
 
+import utm
+
 LARGE_FONT = ("VERDANA", 12)
 style.use("ggplot")
 
@@ -69,8 +71,7 @@ class Plots(tk.Tk):
             if first_line:
                 first_line = False  # Don't read data if first line, since it is the header
             elif len(eachLine) > 1:
-                currTime, time, temperature, altitude, velocity, acceleration = eachLine.split(
-                    ',')  # Split each line by comma
+                currTime, time, temperature, altitude, velocity, acceleration = eachLine.split(',')  # Split each line by comma
                 time_list.append(float(time))  # Add each value to proper list
                 temperature_list.append(float(temperature))
                 altitude_list.append(float(altitude))
@@ -95,7 +96,29 @@ class Plots(tk.Tk):
         d.set_xlabel('Time(s)')
         d.set_ylabel('Acceleration(m/s^2)')
 
-        # plt.draw()
+    def plot_gps_data(self):
+        file = open("../storage/dataGps.csv", "r")  # Open data file for plotting
+        pull_data = file.read()
+        data_list = pull_data.split('\n')
+        latitude_list = []
+        longitude_list = []
+
+        first_line = True
+        for eachLine in data_list:
+            if first_line:
+                first_line = False  # Don't read data if first line, since it is the header
+            elif len(eachLine) > 1:
+                time, latitude, longitude, num_satelites = eachLine.split(',')  # Split each line by comma
+                utm_coordinates = utm.from_latlon(float(latitude), float(longitude))
+                latitude_list.append(utm_coordinates[0])  # Add each value to proper list
+                longitude_list.append(utm_coordinates[1])
+        file.close()
+
+        # e.clear()
+        #e.plot(longitude_list, latitude_list)
+        e.scatter(latitude_list, longitude_list)
+        e.set_xlabel('Longitude')
+        e.set_ylabel('Latitude')
 
 
 class GraphPage(tk.Frame):

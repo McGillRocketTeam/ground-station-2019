@@ -56,8 +56,12 @@ class Parser:
                 #TODO: update data storage and telemetry data to account for full telemetry data
                 # print(len(result[1]))
                 for dataChunk in result[1]:
+                    print(dataChunk)
+                    gpsDataChunk = dataChunk[-3:]   # Get last 3 elements for gps data
                     datastorage.save_telemetry_data(dataChunk)
+                    datastorage.save_gps_data(gpsDataChunk)
                     plots.plot_telemetry_data()
+                    plots.plot_gps_data()
                     plots.update()
 
                     pass
@@ -243,12 +247,14 @@ class Parser:
         #TODO: implement actual fetching of serial data
 
     def genRandomDataArray(self):
-        minLat = -90
-        maxLat = 90
+        minLat = 32
+        maxLat = 33
+        minLong = -107
+        maxLong = -106
         minRand = 0
         maxRand = 100
         lat = randint(minLat, maxLat)
-        long = randint(2*minLat, 2*maxLat)
+        long = randint(minLong, maxLong)
         alt = randint(minRand, maxRand)
         time = randint(minRand, maxRand)
         temp = randint(0, maxRand)
