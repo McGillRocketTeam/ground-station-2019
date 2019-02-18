@@ -71,9 +71,10 @@ class Plots(tk.Tk):
             if first_line:
                 first_line = False  # Don't read data if first line, since it is the header
             elif len(eachLine) > 1:
-                currTime, time, temperature, altitude, velocity, acceleration = eachLine.split(',')  # Split each line by comma
+                # data format: Slat,long,alt,time,temp,vel,acc,sat,E
+                currTime, lat, long, altitude, time, temp, velocity, acceleration, sats = eachLine.split(',')  # Split each line by comma
                 time_list.append(float(time))  # Add each value to proper list
-                temperature_list.append(float(temperature))
+                temperature_list.append(float(temp))
                 altitude_list.append(float(altitude))
                 velocity_list.append(float(velocity))
                 acceleration_list.append(float(acceleration))

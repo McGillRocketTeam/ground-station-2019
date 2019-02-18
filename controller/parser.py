@@ -9,7 +9,7 @@ import datetime
 import time
 
 """
-data format: $ lat long alt time temp vel acc sat
+data format: Slat,long,alt,time,temp,vel,acc,sat,E
 backup data: lat, long, alt, sat#
 """
 countergps = 0
@@ -18,6 +18,9 @@ class Parser:
 
     def __init__(self, datastorage, plots):
         self.port = "COM5"
+        # ls /dev/tty.*
+        #use above to find port of arduino on mac
+        self.port = "/dev/tty.usbserial-A104IBE7"
         self.baud = 9600
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
@@ -38,7 +41,7 @@ class Parser:
 
         loopControl = True
         while loopControl:
-            time.sleep(0.3)
+            # time.sleep(0.3)
             # telemetry_data = ser.read(1000)
             simData = True #Controls if data is simulated or from actual serial reader
             if simData:
@@ -108,6 +111,8 @@ class Parser:
 
         while len(re.split(r',',parseHelpedData[1])) > (dataLength+1):
             parseHelpedData = self.parseHelper((parseHelpedData[1],dataLength))
+            if parseHelpedData[0] == -1:
+                break;
             dataList.append(parseHelpedData[0][0:dataLength])
             pass
         if len(dataList) > 0:  # TODO: implement parsing logic here
@@ -145,7 +150,9 @@ class Parser:
             splitData = re.split(r"S",remainingData,1)
             parsed = re.split(r",",splitData[0])
             if len(splitData) == 1:
-                remainingData = ''
+                # remainingData = ''
+                return (-1,remainingData)
+                # return ([],actualData)
             else:
                 remainingData = splitData[1]
             #TODO: fix: infinite loop when string ends with partial data piece

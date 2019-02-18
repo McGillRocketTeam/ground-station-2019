@@ -29,7 +29,7 @@ class DataStorage:
           
             now = datetime.datetime.now()
             ## This is the current format for saving the telemetry data
-            filewriter.writerow([now.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4]])
+            filewriter.writerow([now.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]])
         file.close()
 
     def save_gps_data(self, data):
