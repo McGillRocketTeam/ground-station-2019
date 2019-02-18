@@ -116,7 +116,7 @@ class Plots(tk.Tk):
 
         # e.clear()
         #e.plot(longitude_list, latitude_list)
-        e.scatter(latitude_list, longitude_list)
+        e.scatter(longitude_list, latitude_list)
         e.set_xlabel('Longitude')
         e.set_ylabel('Latitude')
 
@@ -125,7 +125,8 @@ class GraphPage(tk.Frame):
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
 
-        label = tk.Label(self, text="MRT Live Graph", font=LARGE_FONT)
+        label = tk.Label(self, bg='red', text="McGill Rocket Team Ground Station", font=LARGE_FONT, width=400)
+
         label.pack(pady=10, padx=10)
 
         canvas = FigureCanvasTkAgg(f, self)
