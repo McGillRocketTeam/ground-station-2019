@@ -71,9 +71,10 @@ class Plots(tk.Tk):
             if first_line:
                 first_line = False  # Don't read data if first line, since it is the header
             elif len(eachLine) > 1:
-                currTime, time, temperature, altitude, velocity, acceleration = eachLine.split(',')  # Split each line by comma
+                # data format: Slat,long,alt,time,temp,vel,acc,sat,E
+                currTime, lat, long, altitude, time, temp, velocity, acceleration, sats = eachLine.split(',')  # Split each line by comma
                 time_list.append(float(time))  # Add each value to proper list
-                temperature_list.append(float(temperature))
+                temperature_list.append(float(temp))
                 altitude_list.append(float(altitude))
                 velocity_list.append(float(velocity))
                 acceleration_list.append(float(acceleration))
@@ -116,7 +117,7 @@ class Plots(tk.Tk):
 
         # e.clear()
         #e.plot(longitude_list, latitude_list)
-        e.scatter(latitude_list, longitude_list)
+        e.scatter(longitude_list, latitude_list)
         e.set_xlabel('Longitude')
         e.set_ylabel('Latitude')
 
@@ -125,7 +126,8 @@ class GraphPage(tk.Frame):
     def __init__(self, parent):
         tk.Frame.__init__(self, parent)
 
-        label = tk.Label(self, text="MRT Live Graph", font=LARGE_FONT)
+        label = tk.Label(self, bg='red', text="McGill Rocket Team Ground Station", font=LARGE_FONT, width=400)
+
         label.pack(pady=10, padx=10)
 
         canvas = FigureCanvasTkAgg(f, self)

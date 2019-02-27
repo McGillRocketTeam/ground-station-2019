@@ -9,26 +9,29 @@ import datetime
 import time
 
 """
-data format: $ lat long alt time temp vel acc sat
+data format: Slat,long,alt,time,temp,vel,acc,sat,E
 backup data: lat, long, alt, sat#
 """
+countergps = 0
 class Parser:
     start_time = 0
 
     def __init__(self, datastorage, plots):
-        """
-        self.port = "COM2"
+        self.port = "COM5"
+        # ls /dev/tty.*
+        #use above to find port of arduino on mac
+        self.port = "/dev/tty.usbserial-A104IBE7"
         self.baud = 9600
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
-        self.timeout = 1  # sec
+        self.timeout = 3  # sec
         ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
         self.ser = ser
         if not ser.isOpen():
             ser.open()
         else:
-        """
+            pass
         # print('com5 is open', ser.isOpen())
         # self.testMethod()
         #TODO: account for errors in the data being sent and read
@@ -38,12 +41,15 @@ class Parser:
 
         loopControl = True
         while loopControl:
-            time.sleep(0.8)
+            # time.sleep(0.3)
             # telemetry_data = ser.read(1000)
             simData = True #Controls if data is simulated or from actual serial reader
             if simData:
-                readData += self.serialSim()
-                pass
+                #print(self.ser.read())
+                readData += self.ser.read().decode('utf-8')
+                print(readData)
+                #readData = self.serialSim()
+                #print(readData)
             else:
                 #read serial input
                 pass
@@ -105,6 +111,8 @@ class Parser:
 
         while len(re.split(r',',parseHelpedData[1])) > (dataLength+1):
             parseHelpedData = self.parseHelper((parseHelpedData[1],dataLength))
+            if parseHelpedData[0] == -1:
+                break;
             dataList.append(parseHelpedData[0][0:dataLength])
             pass
         if len(dataList) > 0:  # TODO: implement parsing logic here
@@ -142,7 +150,9 @@ class Parser:
             splitData = re.split(r"S",remainingData,1)
             parsed = re.split(r",",splitData[0])
             if len(splitData) == 1:
-                remainingData = ''
+                # remainingData = ''
+                return (-1,remainingData)
+                # return ([],actualData)
             else:
                 remainingData = splitData[1]
             #TODO: fix: infinite loop when string ends with partial data piece
@@ -151,7 +161,6 @@ class Parser:
             #     break
             # print(parsed)
             # print(remainingData)
-            pass
         return (parsed,remainingData)
 
     # def parseGps(self, data):
@@ -221,26 +230,6 @@ class Parser:
         global start_time
         return 'S' + str(randData[0]) + ',' + str(randData[1]) + ',' + str(randData[2]) + ',' + str(randData[3]) + ',' + str(randData[4]) + ',' + str(randData[5]) + ',' + str(randData[6]) + ',' + str(randData[7]) + ',E'
 
-    def gpsSim(self):
-        #setup serial sim
-        master, slave = pty.openpty()
-        s_name = os.ttyname(slave)
-        ser = serial.Serial(s_name)
-
-        ser.write(bytes('S', 'utf-8'))
-
-        randomGpsData = self.genRandomGpsData()
-
-        for i in range(0,4):
-            ser.write(bytes(str(randomGpsData[i]), 'utf-8'))
-            if i == 3:
-                ser.write(bytes(',E', 'utf-8'))
-            else:
-                ser.write(bytes(',', 'utf-8'))
-
-        return os.read(master, 1000).decode('utf-8')
-
-
 
     def getSerialData(self):
         return self.serialSim()
@@ -253,25 +242,28 @@ class Parser:
         maxLong = -106
         minRand = 0
         maxRand = 100
-        lat = randint(minLat, maxLat)
-        long = randint(minLong, maxLong)
-        alt = randint(minRand, maxRand)
+        global countergps
+        countergps += 0.1
+        lat = 32 + (countergps ** 2) * 0.001
+        long = -107 + (countergps ** 2) ** 0.002
+
+        alt = randint(minRand, maxRand) + random.random()
         time = randint(minRand, maxRand)
-        temp = randint(0, maxRand)
-        vel = randint(minRand, maxRand)
-        acc = randint(minRand, maxRand)
-        sat = randint(minRand, maxRand)
+        temp = randint(0, maxRand) + random.random()
+        vel = randint(minRand, maxRand) + random.random()
+        acc = randint(minRand, maxRand) + random.random()
+        sat = randint(minRand, maxRand) + random.random()
         global start_time
         time = round(datetime.datetime.utcnow().timestamp()) - start_time
         #intList = [lat,long,alt,time,temp,vel,acc,sat]
         intList = [time,temp,alt,vel,acc,lat,long,sat]
-        floatList = [(i + random.random()) for i in intList]
-        return floatList
+        #floatList = [(i + random.random()) for i in intList]
+        return intList
         # return intList
 
     def genRandomGpsData(self):
-        lat = randint(-90,90) + random.random()
-        long = randint(-180,180) + random.random()
+        lat = randint(32,33) + random.random()
+        long = randint(-107,-106) + random.random()
         alt = randint(0,50000) + random.random()
         sat = randint(0,200)
         return [lat,long,alt,sat]
