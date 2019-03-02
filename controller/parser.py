@@ -12,12 +12,12 @@ import time
 data format: Slat,long,alt,time,temp,vel,acc,sat,E
 backup data: lat, long, alt, sat#
 """
-countergps = 0
+countergps = 1
 class Parser:
     start_time = 0
 
     def __init__(self, datastorage, plots):
-        self.port = "COM5"
+        """self.port = "COM5"
         # ls /dev/tty.*
         #use above to find port of arduino on mac
         self.port = "/dev/tty.usbserial-A104IBE7"
@@ -31,7 +31,7 @@ class Parser:
         if not ser.isOpen():
             ser.open()
         else:
-            pass
+            pass"""
         # print('com5 is open', ser.isOpen())
         # self.testMethod()
         #TODO: account for errors in the data being sent and read
@@ -41,15 +41,15 @@ class Parser:
 
         loopControl = True
         while loopControl:
-            # time.sleep(0.3)
+            time.sleep(0.8)
             # telemetry_data = ser.read(1000)
             simData = True #Controls if data is simulated or from actual serial reader
             if simData:
                 #print(self.ser.read())
-                readData += self.ser.read().decode('utf-8')
-                print(readData)
-                #readData = self.serialSim()
+                #readData += self.ser.read().decode('utf-8')
                 #print(readData)
+                readData = self.serialSim()
+                print(readData)
             else:
                 #read serial input
                 pass
@@ -63,7 +63,10 @@ class Parser:
                 # print(len(result[1]))
                 for dataChunk in result[1]:
                     print(dataChunk)
-                    gpsDataChunk = dataChunk[-3:]   # Get last 3 elements for gps data
+                    gpsDataChunk = []
+                    gpsDataChunk.append(dataChunk[0])
+                    gpsDataChunk.append(dataChunk[1])
+                    gpsDataChunk.append(dataChunk[7])
                     datastorage.save_telemetry_data(dataChunk)
                     datastorage.save_gps_data(gpsDataChunk)
                     plots.plot_telemetry_data()
@@ -150,8 +153,8 @@ class Parser:
             splitData = re.split(r"S",remainingData,1)
             parsed = re.split(r",",splitData[0])
             if len(splitData) == 1:
-                # remainingData = ''
-                return (-1,remainingData)
+                remainingData = ''
+                #return (-1,remainingData)
                 # return ([],actualData)
             else:
                 remainingData = splitData[1]
@@ -255,15 +258,17 @@ class Parser:
         sat = randint(minRand, maxRand) + random.random()
         global start_time
         time = round(datetime.datetime.utcnow().timestamp()) - start_time
-        #intList = [lat,long,alt,time,temp,vel,acc,sat]
-        intList = [time,temp,alt,vel,acc,lat,long,sat]
+        intList = [lat,long,alt,time,temp,vel,acc,sat]
+        #intList = [time,temp,alt,vel,acc,lat,long,sat]
         #floatList = [(i + random.random()) for i in intList]
         return intList
         # return intList
 
     def genRandomGpsData(self):
-        lat = randint(32,33) + random.random()
-        long = randint(-107,-106) + random.random()
+        global countergps
+        countergps += 0.1
+        lat = 32 + (countergps ** 2) * 0.001
+        long = -107 + (countergps ** 2) ** 0.002
         alt = randint(0,50000) + random.random()
         sat = randint(0,200)
         return [lat,long,alt,sat]
