@@ -1,3 +1,5 @@
+from typing import List, Any, Union
+
 import serial, os
 from model import datastorage
 import model.datastorage as DataStorage
@@ -7,12 +9,18 @@ import random
 import re
 import datetime
 import time
+import math
 
 """
 data format: Slat,long,alt,time,temp,vel,acc,sat,E
 backup data: lat, long, alt, sat#
 """
-countergps = 1
+# Values for ground station coordinates
+groundlat = 0
+groundlong = 0
+groundalt = 0
+counterAntenna = 0
+
 class Parser:
     start_time = 0
 
@@ -73,6 +81,10 @@ class Parser:
                     plots.plot_gps_data()
                     plots.update()
 
+                    # counterAntenna +=1
+                    # if counterAntenna%1000 == 0:
+                    # Update antenna label on GUI
+
                     pass
                 # Save data to file
                 #datastorage.save_telemetry_data(telemetry_data)
@@ -85,6 +97,57 @@ class Parser:
             else:
                 # TODO: log errors
                 pass
+
+    def findAngle(self, data):
+        '''calculate antenna direction given rocket coordinates and ground station coordinates'''
+        angle = [] # Ordered as angle from east, then angle from ground
+        # coordinates of ground station and rocket
+        ground_x = groundlat
+        ground_y = groundlong
+        rocket_x = float(data[0])
+        rocket_y = float(data[1])
+        rocket_alt = float(data[2])
+        # Covert to decimal degrees
+        '''rocket_x = self.DMStoDD(rocket_x)
+        rocket_y = self.DMStoDD(rocket_y)
+        rocket_alt = self.DMStoDD(rocket_alt)
+        '''
+        # Convert DecDegs to radians
+        ground_x = (math.pi/180)*ground_x
+        ground_y = (math.pi/180)*ground_y
+        rocket_x = (math.pi/180)*rocket_x
+        rocket_y = (math.pi/180)*rocket_y
+        # Compute theta
+        theta = 0.0
+        t = (180/math.pi)*math.atan((rocket_y - ground_y)/(rocket_x-ground_x))
+        if rocket_x < ground_x and rocket_y > ground_y: # Rocket is NW from ground station
+            theta = 180+t
+        elif rocket_x < ground_x and rocket_y < ground_y: # Rocket is SW from ground station
+            theta = 180+t
+        elif rocket_x > ground_x and rocket_y < ground_y: # Rocket is SE from ground station
+            theta = 360+t
+        elif rocket_x > ground_x and rocket_y > ground_y: # Rocket is NE from ground station
+            theta = t
+
+        angle.append(theta)
+
+        # Compute phi
+        # Distance between origin and P, projection of rocket onto xy-plane
+        d = 2*6371000*math.asin(math.sqrt(math.pow((math.sin((rocket_y-ground_y)/2)), 2) + math.cos(ground_x)*math.cos(rocket_x)*math.pow(math.sin((rocket_x-ground_x)/2), 2)))
+        phi = (180/3.14)*math.atan((rocket_alt - groundalt)/d)
+
+        angle.append(phi)
+
+        return angle
+
+    def DMStoDD(self, degMin):
+        '''converts degree minutes seconds into decimal degrees'''
+        min = 0.0
+        decDeg = 0.0
+        min = math.fmod(degMin, 100.0)
+        degMin = (degMin / 100)
+        decDeg = degMin + (min / 60)
+        return decDeg
 
     def parseFull(self, data):
         """
