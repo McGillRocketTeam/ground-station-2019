@@ -19,7 +19,7 @@ backup data: lat, long, alt, sat#
 groundlat = 0
 groundlong = 0
 groundalt = 0
-counterAntenna = 0
+countergps = 0
 
 class Parser:
     start_time = 0
@@ -46,7 +46,7 @@ class Parser:
         readData = ''
         global start_time
         start_time = round(datetime.datetime.utcnow().timestamp())
-
+        counterAntenna = 0
         loopControl = True
         while loopControl:
             time.sleep(0.8)
@@ -81,9 +81,11 @@ class Parser:
                     plots.plot_gps_data()
                     plots.update()
 
-                    # counterAntenna +=1
-                    # if counterAntenna%1000 == 0:
-                    # Update antenna label on GUI
+                    counterAntenna +=1
+                    if counterAntenna%1000 == 0: # Is 1000 the best number for this?
+                        antennaAngle = self.findAngle(dataChunk)
+                        plots.antennaAngle.configure(text='ANTENNA ANGLE: ' + str(antennaAngle[0]) + ' (xy), ' + str(antennaAngle[1]) + ' (z)')
+
 
                     pass
                 # Save data to file
@@ -135,7 +137,7 @@ class Parser:
         # Distance between origin and P, projection of rocket onto xy-plane
         d = 2*6371000*math.asin(math.sqrt(math.pow((math.sin((rocket_y-ground_y)/2)), 2) + math.cos(ground_x)*math.cos(rocket_x)*math.pow(math.sin((rocket_x-ground_x)/2), 2)))
         phi = (180/3.14)*math.atan((rocket_alt - groundalt)/d)
-
+        #TODO: format phi and theta better, how many decimal places?
         angle.append(phi)
 
         return angle

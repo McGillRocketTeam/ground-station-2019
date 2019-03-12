@@ -47,7 +47,7 @@ class Plots(tk.Tk):
         frame.grid(row=0, column=0, sticky="nsew")
 
         self.show_frame()  # Display frame on window
-        self.antennaAngle = tk.Label(self, text='ANTENNA ANGLE: 45 (xy), 40 (z)')
+        self.antennaAngle = tk.Label(self, text='ANTENNA ANGLE: 0 (xy), 0 (z)')
         self.antennaAngle.config(font=("Courier", 35))
         self.antennaAngle.pack(pady=10, padx=10)
 
