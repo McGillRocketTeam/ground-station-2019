@@ -8,7 +8,7 @@ class DataStorage:
         """ Create parse telemetry and gps files, as well as raw data files """
         with open('../storage/dataTelemetry.csv', 'w+') as csvfile_telemetry:
             file_writer = csv.writer(csvfile_telemetry, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            file_writer.writerow(['Current Time', 'Latitude', 'Altitude', 'Time', 'Temperature', 'Velocity', 'Acceleration', 'Satelites'])
+            file_writer.writerow(['Current Time', 'Latitude', 'Longitude', 'Altitude', 'Time', 'Temperature', 'Velocity', 'Acceleration', 'Satelites'])
             csvfile_telemetry.close()
         with open('../storage/dataGps.csv', 'w+') as csvfile_gps:
             file_writer = csv.writer(csvfile_gps, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)

@@ -1,3 +1,5 @@
+import time
+
 import model.datastorage as DataStorage
 import views.plots as Plots
 import serial
@@ -54,7 +56,7 @@ class Parser:
         loop_control = True
 
         while loop_control:
-            # time.sleep(0.8)
+            time.sleep(0.5)
             real_data = False  # Controls if data is simulated or from actual serial reader
             if real_data:
                 telemetry_data += self.serial_telemetry.read().decode('utf-8')
