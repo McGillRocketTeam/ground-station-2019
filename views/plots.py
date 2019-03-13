@@ -64,8 +64,27 @@ class Plots(tk.Tk):
 
         """ Antenna calculations angle label """
         self.antennaAngle = tk.Label(self, text='ANTENNA ANGLE: 0 (xy), 0 (z)')
-        self.antennaAngle.config(font=("Courier", 35))
+        self.antennaAngle.config(font=("Courier", 25))
         self.antennaAngle.pack(pady=10, padx=10)
+
+        """ Reset graph functions """
+        def reset_telemetry_graphs():
+            self.time_list.clear()
+            self.temperature_list.clear()
+            self.altitude_list.clear()
+            self.velocity_list.clear()
+            self.acceleration_list.clear()
+
+        def reset_gps_graphs():
+            self.gps_graph.clear()
+            self.latitude_list.clear()
+            self.longitude_list.clear()
+
+        """ Reset graph buttons """
+        reset_telemetry_button = tk.Button(self, text="RESET TEL", command=reset_telemetry_graphs)
+        reset_telemetry_button.pack()
+        reset_gps_button = tk.Button(self, text="RESET GPS", command=reset_gps_graphs)
+        reset_gps_button.pack()
 
     def show_frame(self):
         frame = self.frame
