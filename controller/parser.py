@@ -1,7 +1,3 @@
-from typing import List, Any, Union
-
-import serial, os
-from model import datastorage
 import model.datastorage as DataStorage
 import views.plots as Plots
 from random import randint
@@ -15,16 +11,21 @@ import math
 data format: Slat,long,alt,time,temp,vel,acc,sat,E
 backup data: lat, long, alt, sat#
 """
+
 # Values for ground station coordinates
 groundlat = 0
 groundlong = 0
 groundalt = 0
 countergps = 0
 
+
 class Parser:
     start_time = 0
 
     def __init__(self, datastorage, plots):
+        global start_time
+        start_time = round(datetime.datetime.utcnow().timestamp())
+
         """self.port = "COM5"
         # ls /dev/tty.*
         #use above to find port of arduino on mac
@@ -40,16 +41,12 @@ class Parser:
             ser.open()
         else:
             pass"""
-        # print('com5 is open', ser.isOpen())
-        # self.testMethod()
-        #TODO: account for errors in the data being sent and read
         readData = ''
-        global start_time
-        start_time = round(datetime.datetime.utcnow().timestamp())
+
         counterAntenna = 0
         loopControl = True
         while loopControl:
-            time.sleep(0.8)
+            # time.sleep(0.8)
             # telemetry_data = ser.read(1000)
             simData = True #Controls if data is simulated or from actual serial reader
             if simData:
@@ -77,12 +74,12 @@ class Parser:
                     gpsDataChunk.append(dataChunk[7])
                     datastorage.save_telemetry_data(dataChunk)
                     datastorage.save_gps_data(gpsDataChunk)
-                    plots.plot_telemetry_data()
-                    plots.plot_gps_data()
-                    plots.update()
+                    plots.plot_telemetry_data(dataChunk)
+                    plots.plot_gps_data(dataChunk)
+                    plots.update_plots()
 
                     counterAntenna +=1
-                    if counterAntenna%1000 == 0: # Is 1000 the best number for this?
+                    if counterAntenna%2 == 0: # Is 1000 the best number for this?
                         antennaAngle = self.findAngle(dataChunk)
                         plots.antennaAngle.configure(text='ANTENNA ANGLE: ' + str(antennaAngle[0]) + ' (xy), ' + str(antennaAngle[1]) + ' (z)')
 
@@ -180,7 +177,7 @@ class Parser:
         while len(re.split(r',',parseHelpedData[1])) > (dataLength+1):
             parseHelpedData = self.parseHelper((parseHelpedData[1],dataLength))
             if parseHelpedData[0] == -1:
-                break;
+                break
             dataList.append(parseHelpedData[0][0:dataLength])
             pass
         if len(dataList) > 0:  # TODO: implement parsing logic here
