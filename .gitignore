@@ -25,6 +25,10 @@
 # Editors
 .idea/
 
+# Flight data files
+storage/*
+
+
 # Gradle
 .idea/**/gradle.xml
 .idea/**/libraries
