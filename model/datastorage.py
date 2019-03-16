@@ -2,48 +2,45 @@
 import csv
 import datetime
 
-class DataStorage:
 
-    # Creates a new file where the data will be stored
+class DataStorage:
     def __init__(self):
+        """ Create parse telemetry and gps files, as well as raw data files """
         with open('../storage/dataTelemetry.csv', 'w+') as csvfile_telemetry:
-            filewriter = csv.writer(csvfile_telemetry, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            filewriter.writerow(['Current Time', 'Time', 'Temperature', 'Altitude', 'Velocity', 'Acceleration'])
+            file_writer = csv.writer(csvfile_telemetry, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            file_writer.writerow(['Current Time', 'Latitude', 'Longitude', 'Altitude', 'Time', 'Temperature', 'Velocity', 'Acceleration', 'Satelites'])
             csvfile_telemetry.close()
         with open('../storage/dataGps.csv', 'w+') as csvfile_gps:
-            filewriter = csv.writer(csvfile_gps, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            filewriter.writerow(['Current Time', 'Latitude', 'Longitude', 'Number of Satellites'])
+            file_writer = csv.writer(csvfile_gps, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            file_writer.writerow(['Current Time', 'Latitude', 'Longitude', 'Number of Satellites'])
             csvfile_gps.close()
-        with open ('../storage/rawData.txt', 'w+') as rawData:
+        with open('../storage/rawData.txt', 'w+') as rawData:
             rawData.write("Raw Data:\n____________________"
                           "____________________\n")
             rawData.close()
 
-
-    # Appends the data to the end of the file
     def save_telemetry_data(self, data):
+        """ Appends new telemetry data to end of the file """
         file = open("../storage/dataTelemetry.csv", "a+")
-        filewriter = csv.writer(file, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        # NOTE: len(data) should have a length of 5
+        file_writer = csv.writer(file, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
         if len(data) == 8:  # TODO: Consider scenarios where the input data is different
-          
             now = datetime.datetime.now()
-            ## This is the current format for saving the telemetry data
-            filewriter.writerow([now.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4]])
+            file_writer.writerow([now.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]])  # This is the current format for saving the telemetry data
         file.close()
 
     def save_gps_data(self, data):
+        """ Appends new GPS data to end of the file """
         file = open("../storage/dataGps.csv", "a+")
-        filewriter = csv.writer(file, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        if len(data) == 3:
+        file_writer = csv.writer(file, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        if len(data) == 3:  # TODO: Consider scenarios where the input data is different
             now = datetime.datetime.now()
-            filewriter.writerow([now.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2]])
+            file_writer.writerow([now.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2]])
         file.close()
 
     def save_raw_data(self, data):
         # TODO: Solve for more edge cases if there are any?
         try:
-            if (isinstance(data, (list, tuple))):
+            if isinstance(data, (list, tuple)):
                 with open("../storage/rawData.txt", 'a+') as rawData:
                     for x in data:
                         rawData.write(x)

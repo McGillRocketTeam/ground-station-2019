@@ -1,77 +1,158 @@
-import serial, os
-from model import datastorage
+import time
+
 import model.datastorage as DataStorage
 import views.plots as Plots
+import serial
 from random import randint
 import random
 import re
 import datetime
-import time
+import math
 
 """
-data format: $ lat long alt time temp vel acc sat
-backup data: lat, long, alt, sat#
+data format: Slat,long,alt,time,temp,vel,acc,sat,E
+backup GPS data: lat, long, alt, sat#
 """
+telemetry_data_length = 8  # Current length of telemetry data string
+counter_gps = 0  # Counter to generate decent GPS data for test only
+ground_lat = 0  # Ground station latitude
+ground_long = 0  # Ground station longitude
+ground_alt = 0  # Ground station altitude
+
+
 class Parser:
     start_time = 0
 
-    def __init__(self, datastorage, plots):
-        """
-        self.port = "COM2"
+    def __init__(self, data_storage, plots):
+        self.data_storage = data_storage
+        self.plots = plots
+
+        # TODO Add port setup for GPS
+        # TODO Automated port check setup
+
+        """self.port = "COM5"
+        # ls /dev/tty.*
+        #use above to find port of arduino on mac
+        self.port = "/dev/tty.usbserial-A104IBE7"
         self.baud = 9600
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
-        self.timeout = 1  # sec
+        self.timeout = 3  # sec
         ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
-        self.ser = ser
+        self.serial_telemetry = ser
         if not ser.isOpen():
             ser.open()
         else:
-        """
-        # print('com5 is open', ser.isOpen())
-        # self.testMethod()
-        #TODO: account for errors in the data being sent and read
-        readData = ''
+            pass"""
+
+    def parse(self):
         global start_time
         start_time = round(datetime.datetime.utcnow().timestamp())
 
-        loopControl = True
-        while loopControl:
-            time.sleep(0.8)
-            # telemetry_data = ser.read(1000)
-            simData = True #Controls if data is simulated or from actual serial reader
-            if simData:
-                readData += self.serialSim()
-                pass
+        telemetry_data = ''
+        gps_data = ''
+        counter_antenna = 0
+        loop_control = True
+
+        while loop_control:
+            time.sleep(0.5)
+            real_data = False  # Controls if data is simulated or from actual serial reader
+            if real_data:
+                telemetry_data += self.serial_telemetry.read().decode('utf-8')
+                gps_data += self.serial_gps.read().decode('utf-8')
+                print(telemetry_data)
+                print(gps_data)
             else:
-                #read serial input
-                pass
-            #TODO: save the full telemetry string here
-            datastorage.save_raw_data(readData)
-            #telemetry_data = [str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100)), str(randint(0, 100))]
+                telemetry_data = self.simulate_serial()
+                print(telemetry_data)
 
-            result = self.parseFull((readData,8))
+            """ Save raw data to files """
+            self.data_storage.save_raw_data(telemetry_data)
+            # self.data_storage.save_raw_data(gps_data)
+
+            result = self.parseFull((telemetry_data, telemetry_data_length))
             if result[0] == 200 or result[0] == 300:
-                #TODO: update data storage and telemetry data to account for full telemetry data
-                # print(len(result[1]))
-                for dataChunk in result[1]:
-                    datastorage.save_telemetry_data(dataChunk)
-                    plots.plot_telemetry_data()
-                    plots.update()
+                for data_chunk in result[1]:
+                    print(data_chunk)
+                    gps_data_chunk = [data_chunk[0], data_chunk[1], data_chunk[7]]
 
-                    pass
-                # Save data to file
-                #datastorage.save_telemetry_data(telemetry_data)
-                # Save gps data as well!
-                # Display data (asynchronously)
-                #plots.plotTelemetryData(telemetry_data)
+                    """ Save telemetry data"""
+                    self.data_storage.save_telemetry_data(data_chunk)
+                    self.data_storage.save_gps_data(gps_data_chunk)
 
-                #update readData so it only contains unparsed text
-                readData = result[2]
+                    """ Plot telemetry data and update GUI """
+                    try:
+                        self.plots.plot_telemetry_data(data_chunk)
+                    except:
+                        print("Error plotting telemetry data")
+                    try:
+                        self.plots.plot_gps_data(data_chunk)
+                    except:
+                        print("Error plotting GPS data")
+                    try:
+                        self.plots.update_plots()
+                    except:
+                        print("Error updating plots")
+
+                    counter_antenna += 1
+                    if counter_antenna % 2 == 0:  # Is 1000 the best number for this?
+                        antenna_angle = self.find_angle(gps_data_chunk)
+                        self.plots.antennaAngle.configure(text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
             else:
                 # TODO: log errors
                 pass
+
+    def find_angle(self, data):
+        '''calculate antenna direction given rocket coordinates and ground station coordinates'''
+        angle = [] # Ordered as angle from east, then angle from ground
+        # coordinates of ground station and rocket
+        ground_x = ground_lat
+        ground_y = ground_long
+        rocket_x = float(data[0])
+        rocket_y = float(data[1])
+        rocket_alt = float(data[2])
+        # Covert to decimal degrees
+        '''rocket_x = self.convert_DMS_to_DD(rocket_x)
+        rocket_y = self.convert_DMS_to_DD(rocket_y)
+        rocket_alt = self.convert_DMS_to_DD(rocket_alt)
+        '''
+        # Convert DecDegs to radians
+        ground_x = (math.pi/180)*ground_x
+        ground_y = (math.pi/180)*ground_y
+        rocket_x = (math.pi/180)*rocket_x
+        rocket_y = (math.pi/180)*rocket_y
+        # Compute theta
+        theta = 0.0
+        t = (180/math.pi)*math.atan((rocket_y - ground_y)/(rocket_x-ground_x))
+        if rocket_x < ground_x and rocket_y > ground_y: # Rocket is NW from ground station
+            theta = 180+t
+        elif rocket_x < ground_x and rocket_y < ground_y: # Rocket is SW from ground station
+            theta = 180+t
+        elif rocket_x > ground_x and rocket_y < ground_y: # Rocket is SE from ground station
+            theta = 360+t
+        elif rocket_x > ground_x and rocket_y > ground_y: # Rocket is NE from ground station
+            theta = t
+
+        angle.append(theta)
+
+        # Compute phi
+        # Distance between origin and P, projection of rocket onto xy-plane
+        d = 2*6371000*math.asin(math.sqrt(math.pow((math.sin((rocket_y-ground_y)/2)), 2) + math.cos(ground_x)*math.cos(rocket_x)*math.pow(math.sin((rocket_x-ground_x)/2), 2)))
+        phi = (180/math.pi)*math.atan((rocket_alt - ground_alt)/d)
+        # TODO: format phi and theta better, how many decimal places?
+        angle.append(phi)
+
+        return angle
+
+    def convert_DMS_to_DD(self, degMin):
+        """ Converts degree minutes seconds into decimal degrees """
+        min = 0.0
+        decDeg = 0.0
+        min = math.fmod(degMin, 100.0)
+        degMin = (degMin / 100)
+        decDeg = degMin + (min / 60)
+        return decDeg
 
     def parseFull(self, data):
         """
@@ -101,6 +182,8 @@ class Parser:
 
         while len(re.split(r',',parseHelpedData[1])) > (dataLength+1):
             parseHelpedData = self.parseHelper((parseHelpedData[1],dataLength))
+            if parseHelpedData[0] == -1:
+                break
             dataList.append(parseHelpedData[0][0:dataLength])
             pass
         if len(dataList) > 0:  # TODO: implement parsing logic here
@@ -139,6 +222,8 @@ class Parser:
             parsed = re.split(r",",splitData[0])
             if len(splitData) == 1:
                 remainingData = ''
+                #return (-1,remainingData)
+                # return ([],actualData)
             else:
                 remainingData = splitData[1]
             #TODO: fix: infinite loop when string ends with partial data piece
@@ -147,8 +232,7 @@ class Parser:
             #     break
             # print(parsed)
             # print(remainingData)
-            pass
-        return (parsed,remainingData)
+        return parsed, remainingData
 
     # def parseGps(self, data):
     #     #TODO: fix parsing if there are more than 2 data strings
@@ -191,137 +275,41 @@ class Parser:
     # def parseHelperGps(self, data):
     #     return self.parseHelper((data,3))
 
+    def simulate_serial(self):
+        random_data = self.generate_random_data_array()
 
-    def serialSim(self):
-        # #setup serial simulator
-        # master, slave = pty.openpty()
-        # s_name = os.ttyname(slave)
-        # ser = serial.Serial(s_name)
-        #
-        # # Write to the device the marker of the start of the data
-        # ser.write(bytes('S','utf-8'))
+        return 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
+               str(random_data[3]) + ',' + str(random_data[4]) + ',' + str(random_data[5]) + ',' + \
+               str(random_data[6]) + ',' + str(random_data[7]) + ',E'
 
-        # Gets randomly generated data
-        randData = self.genRandomDataArray()
+    def generate_random_data_array(self):
+        global counter_gps
 
-        # # Writes random data seperated by commas, ending with a pound sign
-        # for i in range(0,8):
-        #     ser.write(bytes(str(randData[i]), 'utf-8'))
-        #     if i == 7:
-        #         ser.write(bytes(',E', 'utf-8'))
-        #     else:
-        #         ser.write(bytes(',', 'utf-8'))
-        #
-        # # To read data written to slave serial
-        # return os.read(master, 1000).decode('utf-8')
+        min_random = 0
+        max_random = 100
+
+        """ Create decent GPS coordinates for test """
+        counter_gps += 0.1
+        lat = 32 + (counter_gps ** 2) * 0.001
+        long = -107 + (counter_gps ** 2) ** 0.002
+
+        """ Generate random telemetry data """
+        alt = randint(min_random, max_random) + random.random()
+        temp = randint(-100, max_random) + random.random()
+        vel = randint(min_random, max_random) + random.random()
+        acc = randint(min_random, max_random) + random.random()
+        sat = randint(min_random, max_random) + random.random()
         global start_time
-        return 'S' + str(randData[0]) + ',' + str(randData[1]) + ',' + str(randData[2]) + ',' + str(randData[3]) + ',' + str(randData[4]) + ',' + str(randData[5]) + ',' + str(randData[6]) + ',' + str(randData[7]) + ',E'
+        current_time = round(datetime.datetime.utcnow().timestamp()) - start_time
 
-    def gpsSim(self):
-        #setup serial sim
-        master, slave = pty.openpty()
-        s_name = os.ttyname(slave)
-        ser = serial.Serial(s_name)
-
-        ser.write(bytes('S', 'utf-8'))
-
-        randomGpsData = self.genRandomGpsData()
-
-        for i in range(0,4):
-            ser.write(bytes(str(randomGpsData[i]), 'utf-8'))
-            if i == 3:
-                ser.write(bytes(',E', 'utf-8'))
-            else:
-                ser.write(bytes(',', 'utf-8'))
-
-        return os.read(master, 1000).decode('utf-8')
-
-
-
-    def getSerialData(self):
-        return self.serialSim()
-        #TODO: implement actual fetching of serial data
-
-    def genRandomDataArray(self):
-        minLat = -90
-        maxLat = 90
-        minRand = 0
-        maxRand = 100
-        lat = randint(minLat, maxLat)
-        long = randint(2*minLat, 2*maxLat)
-        alt = randint(minRand, maxRand)
-        time = randint(minRand, maxRand)
-        temp = randint(0, maxRand)
-        vel = randint(minRand, maxRand)
-        acc = randint(minRand, maxRand)
-        sat = randint(minRand, maxRand)
-        global start_time
-        time = round(datetime.datetime.utcnow().timestamp()) - start_time
-        #intList = [lat,long,alt,time,temp,vel,acc,sat]
-        intList = [time,temp,alt,vel,acc,lat,long,sat]
-        floatList = [(i + random.random()) for i in intList]
-        return floatList
-        # return intList
-
-    def genRandomGpsData(self):
-        lat = randint(-90,90) + random.random()
-        long = randint(-180,180) + random.random()
-        alt = randint(0,50000) + random.random()
-        sat = randint(0,200)
-        return [lat,long,alt,sat]
-
-
-    def testMethod(self):
-        # test = 'jadjbeSSS19EE3E38,3S$23'
-        # test += self.serialSim()
-        # test += self.serialSim()
-        # # test += 'abeESSSjdj'
-        # test += self.serialSim()
-        # # test += 'abeqSSEE1.232,242.2,44.3'
-        # test += self.serialSim()
-        # test = test[0:len(test)-15]
-        # test += 'E'
-        # # test += 'abcbsdlehEES,See'
-        # print("testData:" + test)
-        # testparsed = self.parse(test)
-        # print(testparsed)
-        # print(self.parse(testparsed[2]))
-        # '''+ self.serialSim()'''
-        test = self.serialSim()
-        test += self.serialSim()
-        for x in range(10):
-            test += self.serialSim()
-            # test =  test[:-randint(1,33)]
-        tr = self.parseFull((test,8))
-        print(tr)
-
-        t2 = self.parseFull((tr[2],8))
-        print(t2)
-
-
-        print("Gps sim")
-        t1 = self.gpsSim()
-        print(t1)
-        for x in range(20):
-            t1 += self.gpsSim()
-            t1 = t1[:-randint(1,15)] #removes a random amount from the end of the string
-        t1 += self.gpsSim()
-        t1 += self.gpsSim()
-        t1 += self.gpsSim()
-        print(t1)
-        # tp = self.parseHelperGps(t1)
-        # print(tp)
-
-        tf = self.parseFull((t1,4))
-        print(tf)
-
-
+        return [lat, long, alt, current_time, temp, vel, acc, sat]
 
 
 def main():
-    datastorage = DataStorage.DataStorage()
+    data_storage = DataStorage.DataStorage()
     plots = Plots.Plots()
-    parser = Parser(datastorage, plots)
+    parser = Parser(data_storage, plots)
+    parser.parse()
 
 
 if __name__ == "__main__":
