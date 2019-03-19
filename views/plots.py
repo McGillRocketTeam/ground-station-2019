@@ -132,8 +132,16 @@ class Plots(tk.Tk):
         self.latitude_list.append(utm_coordinates[0])
         self.longitude_list.append(utm_coordinates[1])
 
-        """ Plot data """
-        self.gps_graph.scatter(self.longitude_list, self.latitude_list)
+        """ GPS colors """
+        self.color_list = []    # List to keep colour of points evenly gradiated
+        for x in range(0, len(self.longitude_list)):
+            self.color_list.append(x + 1)
+        self.color_list[-1] = 0
+        cmap = plt.get_cmap('jet')
+        cmap.set_under('white')
+
+        """ Plot Data """
+        self.gps_graph.scatter(self.longitude_list, self.latitude_list, c=self.color_list, cmap=cmap, vmin=0.1, vmax=len(self.color_list))
         self.gps_graph.set_xlabel('Longitude')
         self.gps_graph.set_ylabel('Latitude')
 
