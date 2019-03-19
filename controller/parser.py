@@ -304,6 +304,21 @@ class Parser:
 
         return [lat, long, alt, current_time, temp, vel, acc, sat]
 
+    def test_serial_missingdata(self):
+        global start_time
+        start_time = round(datetime.datetime.utcnow().timestamp())
+        time.sleep(2)
+        random_data = self.generate_random_data_array()
+
+        string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
+               str(random_data[3]) + ',' + ',' + str(random_data[5]) + ',' + \
+               str(random_data[6]) + ',' + str(random_data[7]) + ',E'
+        p = self.parseFull((string,telemetry_data_length))
+        print(p)
+        self.data_storage.save_telemetry_data(p[1])
+        pass
+
+
 
 def main():
     data_storage = DataStorage.DataStorage()
