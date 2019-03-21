@@ -12,7 +12,7 @@ class DataStorage:
             csvfile_telemetry.close()
         with open('../storage/dataGps.csv', 'w+') as csvfile_gps:
             file_writer = csv.writer(csvfile_gps, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            file_writer.writerow(['Current Time', 'Latitude', 'Longitude', 'Number of Satellites'])
+            file_writer.writerow(['Current Time', 'Latitude', 'Longitude', 'Number of Satellites', 'Altitude'])
             csvfile_gps.close()
         with open('../storage/rawData.txt', 'w+') as rawData:
             rawData.write("Raw Data:\n____________________"
@@ -32,9 +32,9 @@ class DataStorage:
         """ Appends new GPS data to end of the file """
         file = open("../storage/dataGps.csv", "a+")
         file_writer = csv.writer(file, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        if len(data) == 3:  # TODO: Consider scenarios where the input data is different
+        if len(data) == 5:  # TODO: Consider scenarios where the input data is different
             now = datetime.datetime.now()
-            file_writer.writerow([now.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2]])
+            file_writer.writerow([now.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4]])
         file.close()
 
     def save_raw_data(self, data):

@@ -14,6 +14,7 @@ data format: Slat,long,alt,time,temp,vel,acc,sat,E
 backup GPS data: lat, long, alt, sat#
 """
 telemetry_data_length = 8  # Current length of telemetry data string
+gps_data_length = 5 #Current length of gps data string
 counter_gps = 0  # Counter to generate decent GPS data for test only
 ground_lat = 0  # Ground station latitude
 ground_long = 0  # Ground station longitude
@@ -30,21 +31,33 @@ class Parser:
         # TODO Add port setup for GPS
         # TODO Automated port check setup
 
-        """self.port = "COM5"
+        # self.port = "COM5"
         # ls /dev/tty.*
         #use above to find port of arduino on mac
-        self.port = "/dev/tty.usbserial-A104IBE7"
+        # self.port = "/dev/tty.usbserial-A104IBE7"
+        # self.port = "/dev/tty.usbmodem14201"
+        self.port = "/dev/tty.usbmodem14101"
+
+        self.port2 = "/dev/tty.usbmodem14101"
         self.baud = 9600
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
         self.timeout = 3  # sec
-        ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
-        self.serial_telemetry = ser
-        if not ser.isOpen():
-            ser.open()
-        else:
-            pass"""
+        #Serial setup for
+        # ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
+        # self.serial_telemetry = ser
+        # if not ser.isOpen():
+        #     ser.open()
+        # else:
+        #     pass
+
+        # ser2 = serial.Serial(self.port2, self.baud, self.byte, self.parity, self.stopbits)
+        # self.serial_gps = ser2
+        # if not ser2.isOpen() :
+        #     ser2.open()
+        # else:
+        #     pass
 
     def parse(self):
         global start_time
@@ -56,52 +69,37 @@ class Parser:
         loop_control = True
 
         while loop_control:
-            time.sleep(0.5)
+            # time.sleep(0.5)
             real_data = False  # Controls if data is simulated or from actual serial reader
             if real_data:
                 telemetry_data += self.serial_telemetry.read().decode('utf-8')
-                gps_data += self.serial_gps.read().decode('utf-8')
+                # gps_data += self.serial_gps.read().decode('utf-8')
                 print(telemetry_data)
                 print(gps_data)
             else:
-                telemetry_data = self.simulate_serial()
+                telemetry_data += self.simulate_serial()
+                gps_data += self.sim_gps()
                 print(telemetry_data)
+                print(gps_data)
 
             """ Save raw data to files """
             self.data_storage.save_raw_data(telemetry_data)
             # self.data_storage.save_raw_data(gps_data)
 
+            #processing for full telemetry data
             result = self.parseFull((telemetry_data, telemetry_data_length))
-            if result[0] == 200 or result[0] == 300:
-                for data_chunk in result[1]:
-                    print(data_chunk)
-                    gps_data_chunk = [data_chunk[0], data_chunk[1], data_chunk[7]]
+            print(result)
+            return_data = self.processParsed((result,(200,300),counter_antenna,telemetry_data,True, True))
+            telemetry_data = return_data[0]
+            counter_antenna = return_data[1]
 
-                    """ Save telemetry data"""
-                    self.data_storage.save_telemetry_data(data_chunk)
-                    self.data_storage.save_gps_data(gps_data_chunk)
+            #processing for gps:
+            # gps_result = self.parseFull((gps_data, gps_data_length))
+            # print('gps::')
+            # print(gps_result)
+            # return_gps_data = self.processParsed((gps_result,(200,300),counter_antenna,gps_data,False, False))
+            # gps_data = return_gps_data[0]
 
-                    """ Plot telemetry data and update GUI """
-                    try:
-                        self.plots.plot_telemetry_data(data_chunk)
-                    except:
-                        print("Error plotting telemetry data")
-                    try:
-                        self.plots.plot_gps_data(data_chunk)
-                    except:
-                        print("Error plotting GPS data")
-                    try:
-                        self.plots.update_plots()
-                    except:
-                        print("Error updating plots")
-
-                    counter_antenna += 1
-                    if counter_antenna % 2 == 0:  # Is 1000 the best number for this?
-                        antenna_angle = self.find_angle(gps_data_chunk)
-                        self.plots.antennaAngle.configure(text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
-            else:
-                # TODO: log errors
-                pass
 
     def find_angle(self, data):
         '''calculate antenna direction given rocket coordinates and ground station coordinates'''
@@ -178,7 +176,7 @@ class Parser:
             dataList = []
             status = 400
         else:
-            dataList = [parseHelpedData[0][0:8]]
+            dataList = [parseHelpedData[0][0:dataLength]]
 
         while len(re.split(r',',parseHelpedData[1])) > (dataLength+1):
             parseHelpedData = self.parseHelper((parseHelpedData[1],dataLength))
@@ -221,8 +219,12 @@ class Parser:
             splitData = re.split(r"S",remainingData,1)
             parsed = re.split(r",",splitData[0])
             if len(splitData) == 1:
-                remainingData = ''
-                #return (-1,remainingData)
+                # remainingData = ''
+                return (-1,remainingData)
+                # if len(splitData) != (stringLength+1):
+                #     return (-1, remainingData)
+                # else:
+                #     return (parsed,remainingData)
                 # return ([],actualData)
             else:
                 remainingData = splitData[1]
@@ -304,6 +306,67 @@ class Parser:
 
         return [lat, long, alt, current_time, temp, vel, acc, sat]
 
+    def processParsed(self, data):
+        """
+        errorCodeTuple: (200,300)
+        updateantenna: true if we want to update antenna values
+        full_data: true if we want to process the full data
+        :param data: (result,(errorCodesTuple), counter_antenna, telemetry_data, updateantenna, full_data
+        :return: new telemetry_data, new counter_antenna
+        """
+
+        result = data[0]
+        e1 = data[1][0]
+        e2 = data[1][1]
+        counter_antenna = data[2]
+        t_data = data[3]
+        update_antenna = data[4]
+        full_data = data[5]
+        if result[0] == e1 or result[0] == e2:
+            for data_chunk in result[1]:
+                # print(data_chunk)
+                if full_data:
+                    gps_data_chunk = [data_chunk[0], data_chunk[1], data_chunk[7]]
+
+                    """ Save telemetry data"""
+                    self.data_storage.save_telemetry_data(data_chunk)
+                    self.data_storage.save_gps_data(gps_data_chunk)
+
+                    """ Plot telemetry data and update GUI """
+                    try:
+                        self.plots.plot_telemetry_data(data_chunk)
+                    except:
+                        print("Error plotting telemetry data")
+                    try:
+                        self.plots.plot_gps_data(data_chunk)
+                    except:
+                        print("Error plotting GPS data")
+                    try:
+                        self.plots.update_plots()
+                    except:
+                        print("Error updating plots")
+                    if update_antenna:
+                        counter_antenna += 1
+                    if counter_antenna % 2 == 0 and update_antenna:  # Is 1000 the best number for this?
+                        antenna_angle = self.find_angle(gps_data_chunk)
+                        self.plots.antennaAngle.configure(
+                            text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
+                    if result[0] == e1:
+                        t_data = result[2]
+                        pass
+                    elif result[0] == e2:  # empty
+                        t_data = ''
+                        pass
+                else :
+                    try:
+                        self.data_storage.save_gps_data(data_chunk)
+                    except:
+                        print('Error saving parsed gps backup data')
+        else:
+            # TODO: log errors
+            pass
+        return t_data, counter_antenna
+
     def test_serial_missingdata(self):
         global start_time
         start_time = round(datetime.datetime.utcnow().timestamp())
@@ -318,7 +381,12 @@ class Parser:
         self.data_storage.save_telemetry_data(p[1])
         pass
 
+    def sim_gps(self):
+        random_data = self.generate_random_data_array()
 
+        string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
+                 str(random_data[3]) + ',' + str(random_data[4]) + ',E'
+        return string
 
 def main():
     data_storage = DataStorage.DataStorage()
