@@ -86,14 +86,14 @@ class Parser:
             self.data_storage.save_raw_data(telemetry_data)
             # self.data_storage.save_raw_data(gps_data)
 
-            #processing for full telemetry data
+            # processing for full telemetry data
             result = self.parseFull((telemetry_data, telemetry_data_length))
             print(result)
-            return_data = self.processParsed((result,(200,300),counter_antenna,telemetry_data,True, True))
+            return_data = self.processParsed((result, (200, 300), counter_antenna, telemetry_data, True, True))
             telemetry_data = return_data[0]
             counter_antenna = return_data[1]
 
-            #processing for gps:
+            # processing for gps:
             # gps_result = self.parseFull((gps_data, gps_data_length))
             # print('gps::')
             # print(gps_result)
@@ -387,6 +387,14 @@ class Parser:
         string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
                  str(random_data[3]) + ',' + str(random_data[4]) + ',E'
         return string
+    
+    def log_parse(self, data):
+
+        print(data, file=open("../storage/parselog.txt", "a"))
+        # f = open("../storage/parselog.txt", "a")
+        # f.write(data)
+        # f.close()
+        pass
 
 def main():
     data_storage = DataStorage.DataStorage()
