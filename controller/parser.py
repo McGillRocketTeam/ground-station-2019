@@ -14,7 +14,7 @@ data format: Slat,long,alt,time,temp,vel,acc,sat,E
 backup GPS data: lat, long, alt, sat#
 """
 telemetry_data_length = 8  # Current length of telemetry data string
-gps_data_length = 5 #Current length of gps data string
+gps_data_length = 5  # Current length of gps data string
 counter_gps = 0  # Counter to generate decent GPS data for test only
 ground_lat = 0  # Ground station latitude
 ground_long = 0  # Ground station longitude
@@ -24,16 +24,16 @@ ground_alt = 0  # Ground station altitude
 class Parser:
     start_time = 0
 
-    def __init__(self, data_storage, plots):
-        self.data_storage = data_storage
-        self.plots = plots
+    def __init__(self, data_storage_in, plots_in):
+        self.data_storage = data_storage_in
+        self.plots = plots_in
 
         # TODO Add port setup for GPS
         # TODO Automated port check setup
 
         # self.port = "COM5"
         # ls /dev/tty.*
-        #use above to find port of arduino on mac
+        # use above to find port of arduino on mac
         # self.port = "/dev/tty.usbserial-A104IBE7"
         # self.port = "/dev/tty.usbmodem14201"
         self.port = "/dev/tty.usbmodem14101"
@@ -44,7 +44,7 @@ class Parser:
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
         self.timeout = 3  # sec
-        #Serial setup for
+        # setup for telemetry serial
         # ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
         # self.serial_telemetry = ser
         # if not ser.isOpen():
@@ -52,6 +52,7 @@ class Parser:
         # else:
         #     pass
 
+        # Setup for gps serial
         # ser2 = serial.Serial(self.port2, self.baud, self.byte, self.parity, self.stopbits)
         # self.serial_gps = ser2
         # if not ser2.isOpen() :
@@ -90,7 +91,7 @@ class Parser:
             self.data_storage.save_raw_data(telemetry_data)
             # self.data_storage.save_raw_data(gps_data)
 
-            # processing for full telemetry data
+            # processing for full telemetry data:
             result = self.parse_full((telemetry_data, telemetry_data_length))
             print(result)
             return_data = self.processParsed((result, (200, 300), counter_antenna, telemetry_data, True, True))
@@ -103,6 +104,7 @@ class Parser:
             # print(gps_result)
             # return_gps_data = self.processParsed((gps_result,(200,300),counter_antenna,gps_data,False, False))
             # gps_data = return_gps_data[0]
+            pass
 
 
     def find_angle(self, data):
@@ -190,20 +192,27 @@ class Parser:
             pass
         if len(data_list) > 0:  # TODO: implement parsing logic here
             if len(parse_helped_data) == 1:
-                return (300,data_list,'')
+                return 300, data_list, ''
             else:
-                return (200,data_list, parse_helped_data[1])
-        return (status,)
+                return 200, data_list, parse_helped_data[1]
+        return status,
 
     # def parseHelperFull(self, data):
     #     return self.parseHelper((data,8))
 
     def parseHelper(self, data):
-        '''this function takes in a string of any length, and returns a tuple,
-        where slot 0 is the current array of seperated values from one telemetry reading
+        """
+        this function takes in a string of any length, and returns a tuple,
+        where slot 0 is the current array of separated values from one telemetry reading
         if slot 0 contains the int -1, then there was no data to be parsed
         slot 1 is the remaining string
-        '''
+        :param data: tuple(actual_data,string_length)
+        actual_data is the string to be parsed
+        string_length is the number of values separated by commas in the string
+        :return: tuple(array, string)
+        array is the list of values that were separated by commas in the input string
+        string is the remaining string that was not able to be parsed
+        """
         # split the data tuple into the actual data, and the length of the data string
         actual_data = data[0]
         string_length = data[1]
@@ -213,18 +222,18 @@ class Parser:
         if len(split_data) == 2:
             remaining_data = split_data[1]
         else:
-            split_try = re.split(r",",split_data[0])
+            split_try = re.split(r",", split_data[0])
             if len(split_try) == (string_length+1):
                 return split_try, ""
             else:
                 return -1, split_data[0]
         parsed = re.split(r",", split_data[0])
-        while len(parsed) != (string_length+1) :
-            split_data = re.split(r"S",remaining_data,1)
-            parsed = re.split(r",",split_data[0])
+        while len(parsed) != (string_length+1):
+            split_data = re.split(r"S", remaining_data, 1)
+            parsed = re.split(r",", split_data[0])
             if len(split_data) == 1:
                 # remaining_data = ''
-                return (-1,remaining_data)
+                return (-1, remaining_data)
                 # if len(splitData) != (stringLength+1):
                 #     return (-1, remaining_data)
                 # else:
@@ -251,6 +260,11 @@ class Parser:
                str(random_data[6]) + ',' + str(random_data[7]) + ',E'
 
     def generate_random_data_array(self):
+        """
+        Generates a array with 8 elements to simulate data
+        [lat, long, alt, current_time, temp, vel, acc, sat]
+        :return: list of length 8 with random data (except time increments)
+        """
         global counter_gps
 
         min_random = 0
@@ -348,6 +362,10 @@ class Parser:
         pass
 
     def sim_gps(self):
+        """
+
+        :return: a string starting with 'S' followed by 4 random numbers separated by commas
+        """
         random_data = self.generate_random_data_array()
 
         string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
@@ -361,6 +379,7 @@ class Parser:
         # f.write(data)
         # f.close()
         pass
+
 
 def main():
     data_store = data_storage.DataStorage()

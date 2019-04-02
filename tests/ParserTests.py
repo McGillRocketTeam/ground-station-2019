@@ -35,17 +35,20 @@ class ParserTester:
 
         :return:
         """
-        self.random_char()
-        st1 = self.consistent_string_modification(10000)
-        self.consistent_string_mod_test(0, 15, 5)
-        print(st1)
-
+        print('Normal String:')
+        print(self.simulate_serial())
+        #
+        # self.random_char()
+        # st1 = self.consistent_string_modification(10000)
+        # self.consistent_string_mod_test(0, 15, 5)
+        # print(st1)
+        # TODO: mostly send changes in the data, then ocassionally send the full string to recalibrate
         print("modified data string:")
         st1 = self.modified_data_string(1, 'zzTop')
         print(st1)
 
         print("test with missing:")
-        self.test_with_missing_one_at_time(("random", 200, ''))
+        self.test_with_missing_one_at_time(("random", 1, ''))
         pass
 
     def random_test(self):
