@@ -1,7 +1,7 @@
 import time
 
-import model.datastorage as DataStorage
-import views.plots as Plots
+import model.datastorage as data_storage
+import views.plots as plots
 import serial
 from random import randint
 import random
@@ -14,7 +14,7 @@ data format: Slat,long,alt,time,temp,vel,acc,sat,E
 backup GPS data: lat, long, alt, sat#
 """
 telemetry_data_length = 8  # Current length of telemetry data string
-gps_data_length = 5 #Current length of gps data string
+gps_data_length = 5  # Current length of gps data string
 counter_gps = 0  # Counter to generate decent GPS data for test only
 ground_lat = 0  # Ground station latitude
 ground_long = 0  # Ground station longitude
@@ -24,16 +24,16 @@ ground_alt = 0  # Ground station altitude
 class Parser:
     start_time = 0
 
-    def __init__(self, data_storage, plots):
-        self.data_storage = data_storage
-        self.plots = plots
+    def __init__(self, data_storage_in, plots_in):
+        self.data_storage = data_storage_in
+        self.plots = plots_in
 
         # TODO Add port setup for GPS
         # TODO Automated port check setup
 
         # self.port = "COM5"
         # ls /dev/tty.*
-        #use above to find port of arduino on mac
+        # use above to find port of arduino on mac
         # self.port = "/dev/tty.usbserial-A104IBE7"
         # self.port = "/dev/tty.usbmodem14201"
         self.port = "/dev/tty.usbmodem14101"
@@ -44,7 +44,7 @@ class Parser:
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
         self.timeout = 3  # sec
-        #Serial setup for
+        # setup for telemetry serial
         # ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
         # self.serial_telemetry = ser
         # if not ser.isOpen():
@@ -52,6 +52,7 @@ class Parser:
         # else:
         #     pass
 
+        # Setup for gps serial
         # ser2 = serial.Serial(self.port2, self.baud, self.byte, self.parity, self.stopbits)
         # self.serial_gps = ser2
         # if not ser2.isOpen() :
@@ -60,6 +61,10 @@ class Parser:
         #     pass
 
     def parse(self):
+        """
+        Contains the main while loop is used to repeatedly parse the received data
+        :return: no return data
+        """
         global start_time
         start_time = round(datetime.datetime.utcnow().timestamp())
 
@@ -86,19 +91,20 @@ class Parser:
             self.data_storage.save_raw_data(telemetry_data)
             # self.data_storage.save_raw_data(gps_data)
 
-            #processing for full telemetry data
-            result = self.parseFull((telemetry_data, telemetry_data_length))
+            # processing for full telemetry data:
+            result = self.parse_full((telemetry_data, telemetry_data_length))
             print(result)
-            return_data = self.processParsed((result,(200,300),counter_antenna,telemetry_data,True, True))
+            return_data = self.processParsed((result, (200, 300), counter_antenna, telemetry_data, True, True))
             telemetry_data = return_data[0]
             counter_antenna = return_data[1]
 
-            #processing for gps:
+            # processing for gps:
             # gps_result = self.parseFull((gps_data, gps_data_length))
             # print('gps::')
             # print(gps_result)
             # return_gps_data = self.processParsed((gps_result,(200,300),counter_antenna,gps_data,False, False))
             # gps_data = return_gps_data[0]
+            pass
 
 
     def find_angle(self, data):
@@ -143,16 +149,16 @@ class Parser:
 
         return angle
 
-    def convert_DMS_to_DD(self, degMin):
+    def convert_DMS_to_DD(self, deg_min):
         """ Converts degree minutes seconds into decimal degrees """
-        min = 0.0
-        decDeg = 0.0
-        min = math.fmod(degMin, 100.0)
-        degMin = (degMin / 100)
-        decDeg = degMin + (min / 60)
-        return decDeg
+        min_val = 0.0
+        dec_deg = 0.0
+        min_val = math.fmod(deg_min, 100.0)
+        deg_min = (deg_min / 100)
+        dec_deg = deg_min + (min_val / 60)
+        return dec_deg
 
-    def parseFull(self, data):
+    def parse_full(self, data):
         """
         :param data: the string of text that should be parsed in a tuple with length of datastring
         :return: a tuple containing (status, listOfParsedData, remainingString)
@@ -168,116 +174,85 @@ class Parser:
         300 data was successfully parsed, remaining string is empty
         400 no data was parsed from the string
         """
-        dataString = data[0]
-        dataLength = data[1]
-        parseHelpedData = self.parseHelper((dataString,dataLength))
+        data_string = data[0]
+        data_length = data[1]
+        parse_helped_data = self.parseHelper((data_string,data_length))
 
-        if parseHelpedData[0] == -1:
-            dataList = []
+        if parse_helped_data[0] == -1:
+            data_list = []
             status = 400
         else:
-            dataList = [parseHelpedData[0][0:dataLength]]
+            data_list = [parse_helped_data[0][0:data_length]]
 
-        while len(re.split(r',',parseHelpedData[1])) > (dataLength+1):
-            parseHelpedData = self.parseHelper((parseHelpedData[1],dataLength))
-            if parseHelpedData[0] == -1:
+        while len(re.split(r',',parse_helped_data[1])) > (data_length+1):
+            parse_helped_data = self.parseHelper((parse_helped_data[1],data_length))
+            if parse_helped_data[0] == -1:
                 break
-            dataList.append(parseHelpedData[0][0:dataLength])
+            data_list.append(parse_helped_data[0][0:data_length])
             pass
-        if len(dataList) > 0:  # TODO: implement parsing logic here
-            if len(parseHelpedData) == 1:
-                return (300,dataList,'')
+        if len(data_list) > 0:  # TODO: implement parsing logic here
+            if len(parse_helped_data) == 1:
+                return 300, data_list, ''
             else:
-                return (200,dataList, parseHelpedData[1])
-        return (status,)
+                return 200, data_list, parse_helped_data[1]
+        return status,
 
     # def parseHelperFull(self, data):
     #     return self.parseHelper((data,8))
 
     def parseHelper(self, data):
-        '''this function takes in a string of any length, and returns a tuple,
-        where slot 0 is the current array of seperated values from one telemetry reading
+        """
+        this function takes in a string of any length, and returns a tuple,
+        where slot 0 is the current array of separated values from one telemetry reading
         if slot 0 contains the int -1, then there was no data to be parsed
         slot 1 is the remaining string
-        '''
-        #split the data tuple into the actual data, and the length of the data string
-        actualData = data[0]
-        stringLength = data[1]
-        #Takes the first set of data from the data string, or removes the garbage from the front of it
-        splitData = re.split(r"S",actualData,1)
-        remainingData = ''
-        if len(splitData) == 2:
-            remainingData = splitData[1]
+        :param data: tuple(actual_data,string_length)
+        actual_data is the string to be parsed
+        string_length is the number of values separated by commas in the string
+        :return: tuple(array, string)
+        array is the list of values that were separated by commas in the input string
+        string is the remaining string that was not able to be parsed
+        """
+        # split the data tuple into the actual data, and the length of the data string
+        actual_data = data[0]
+        string_length = data[1]
+        # Takes the first set of data from the data string, or removes the garbage from the front of it
+        split_data = re.split(r"S", actual_data, 1)
+        remaining_data = ''
+        if len(split_data) == 2:
+            remaining_data = split_data[1]
         else:
-            splitTry = re.split(r",",splitData[0])
-            if len(splitTry) == (stringLength+1):
-                return (splitTry,"")
+            split_try = re.split(r",", split_data[0])
+            if len(split_try) == (string_length+1):
+                return split_try, ""
             else:
-                return (-1,splitData[0])
-        parsed = re.split(r",",splitData[0])
-        while len(parsed) != (stringLength+1) :
-            splitData = re.split(r"S",remainingData,1)
-            parsed = re.split(r",",splitData[0])
-            if len(splitData) == 1:
-                # remainingData = ''
-                return (-1,remainingData)
+                return -1, split_data[0]
+        parsed = re.split(r",", split_data[0])
+        while len(parsed) != (string_length+1):
+            split_data = re.split(r"S", remaining_data, 1)
+            parsed = re.split(r",", split_data[0])
+            if len(split_data) == 1:
+                # remaining_data = ''
+                return (-1, remaining_data)
                 # if len(splitData) != (stringLength+1):
-                #     return (-1, remainingData)
+                #     return (-1, remaining_data)
                 # else:
-                #     return (parsed,remainingData)
+                #     return (parsed,remaining_data)
                 # return ([],actualData)
             else:
-                remainingData = splitData[1]
+                remaining_data = split_data[1]
             #TODO: fix: infinite loop when string ends with partial data piece
 
-            # if len(re.split(r',',remainingData)) < 12:
+            # if len(re.split(r',',remaining_data)) < 12:
             #     break
             # print(parsed)
-            # print(remainingData)
-        return parsed, remainingData
-
-    # def parseGps(self, data):
-    #     #TODO: fix parsing if there are more than 2 data strings
-    #     """
-    #             :param data: the string of text that should be parsed
-    #             :return: a tuple containing (status, listOfParsedData, remainingString)
-    #             status: status code: 200 means parse was successful
-    #             listOfParsedData: a list containing lists of length 8 (the telemetry data)
-    #             remainingString: the data that was not able to be parsed at the end of the data string
-    #             """
-    #     gpsStatus = 50  # error codes or correlation id
-    #     """
-    #     Error Codes:
-    #     50 error occured
-    #     20 data was successfully parsed, remainingString is non-empty
-    #     30 data was successfully parsed, remaining string is empty
-    #     40 no data was parsed from the string
-    #     """
-    #     parseHelpedData = self.parseHelperGps(data)
-    #
-    #     if parseHelpedData[0] == -1:
-    #         dataList = []
-    #         gpsStatus = 40
-    #     else:
-    #         dataList = [parseHelpedData[0][0:3]]
-    #
-    #     while len(re.split(r',', parseHelpedData[1])) > 4:
-    #         parseHelpedData = self.parseHelperGps(parseHelpedData[1])
-    #         dataList.append(parseHelpedData[0][0:3])
-    #         print(dataList)
-    #         pass
-    #     if len(dataList) > 0:  # TODO: implement parsing logic here
-    #         if len(parseHelpedData) == 1:
-    #             return (30, dataList, '')
-    #         else:
-    #             return (20, dataList, parseHelpedData[1])
-    #     return (gpsStatus,)
-    #     pass
-
-    # def parseHelperGps(self, data):
-    #     return self.parseHelper((data,3))
+            # print(remaining_data)
+        return parsed, remaining_data
 
     def simulate_serial(self):
+        """"
+        output a string that should be somewhat representative of the string that will be sent by the AV bay
+        """
         random_data = self.generate_random_data_array()
 
         return 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
@@ -285,6 +260,11 @@ class Parser:
                str(random_data[6]) + ',' + str(random_data[7]) + ',E'
 
     def generate_random_data_array(self):
+        """
+        Generates a array with 8 elements to simulate data
+        [lat, long, alt, current_time, temp, vel, acc, sat]
+        :return: list of length 8 with random data (except time increments)
+        """
         global counter_gps
 
         min_random = 0
@@ -376,22 +356,35 @@ class Parser:
         string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
                str(random_data[3]) + ',' + ',' + str(random_data[5]) + ',' + \
                str(random_data[6]) + ',' + str(random_data[7]) + ',E'
-        p = self.parseFull((string,telemetry_data_length))
+        p = self.parse_full((string, telemetry_data_length))
         print(p)
         self.data_storage.save_telemetry_data(p[1])
         pass
 
     def sim_gps(self):
+        """
+
+        :return: a string starting with 'S' followed by 4 random numbers separated by commas
+        """
         random_data = self.generate_random_data_array()
 
         string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
                  str(random_data[3]) + ',' + str(random_data[4]) + ',E'
         return string
+    
+    def log_parse(self, data):
+
+        print(data, file=open("../storage/parselog.txt", "a"))
+        # f = open("../storage/parselog.txt", "a")
+        # f.write(data)
+        # f.close()
+        pass
+
 
 def main():
-    data_storage = DataStorage.DataStorage()
-    plots = Plots.Plots()
-    parser = Parser(data_storage, plots)
+    data_store = data_storage.DataStorage()
+    plots_instance = plots.Plots()
+    parser = Parser(data_store, plots_instance)
     parser.parse()
 
 
