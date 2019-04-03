@@ -284,7 +284,15 @@ class Parser:
         # Compute theta
         theta = 0.0
         t = (180/math.pi)*math.atan((rocket_y - ground_y)/(rocket_x-ground_x))
-        if rocket_x < ground_x and rocket_y > ground_y: # Rocket is NW from ground station
+        if abs(rocket_x - ground_x) < math.pow(10, -9) and rocket_y > ground_y: # Rocket is directly N from ground station
+            theta = 90
+        elif abs(rocket_x - ground_x) < math.pow(10, -9) and rocket_y < ground_y: # Rocket is directly S from ground station
+            theta = 270
+        elif rocket_x > ground_x and abs(rocket_y - ground_y) < math.pow(10, -9): # Rocket is directly E from ground station
+            theta = 0
+        elif rocket_x < ground_x and abs(rocket_y - ground_y) < math.pow(10, -9): # Rocket is directly W from ground station
+            theta = 180
+        elif rocket_x < ground_x and rocket_y > ground_y: # Rocket is NW from ground station
             theta = 180+t
         elif rocket_x < ground_x and rocket_y < ground_y: # Rocket is SW from ground station
             theta = 180+t
