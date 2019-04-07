@@ -55,7 +55,7 @@ class Parser:
         # Setup for gps serial
         # ser2 = serial.Serial(self.port2, self.baud, self.byte, self.parity, self.stopbits)
         # self.serial_gps = ser2
-        # if not ser2.isOpen() :
+        # if not ser2.isOpen():
         #     ser2.open()
         # else:
         #     pass
@@ -78,8 +78,9 @@ class Parser:
             real_data = False  # Controls if data is simulated or from actual serial reader
             caladan_data = False  # Controls if we want to use caladan data
             if real_data:
-                # telemetry_data += self.serial_telemetry.read().decode('utf-8')
-                # gps_data += self.serial_gps.read().decode('utf-8')
+                # telemetry_data += self.serial_telemetry.read(size=1000).decode('utf-8')
+                # gps_data += self.serial_gps.read(size=1000).decode('utf-8')
+
                 print(telemetry_data)
                 print(gps_data)
             else:  # Fake data
