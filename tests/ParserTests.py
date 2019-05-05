@@ -75,14 +75,72 @@ class ParserTester:
         string_in = data
         data_in = (string_in, 8)
         parser.parse_helper(self.parse, data_in)
-
         pass
-
 
     def new_parseh(self, data):
         string_in = data
         data_in = (string_in, 8)
         parser.parse_help_fast(self.parse, data_in)
+        pass
+
+    def helper_compare(self):
+        maximum = 10000
+        s = -1000
+        # warmup to get processor into maximum clock state before tests start
+        for j in range(0, maximum*maximum):
+            s += 2
+        string_in = self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial()
+        # print('old test')
+        self.performance_tests((self.old_parseh, string_in))
+        sum_old = 0
+        for i in range(0, maximum):
+            string_in = self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial()
+            sum_old += self.performance_tests((self.old_parseh, string_in))
+        # print('new test')
+        self.performance_tests((self.new_parseh, string_in))
+        sum_new = 0
+        for i in range(0, maximum):
+            string_in = self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial()
+            sum_new += self.performance_tests((self.new_parseh, string_in))
+        print('Old Helper::  sum: {} avg: {}'.format(sum_old, sum_old / maximum))
+        print('New Helper::  sum: {} avg: {}'.format(sum_new, sum_new / maximum))
+        pass
+
+    def full_parse_compare(self):
+        maximum = 10000
+        s = -1000
+        # warmup to get processor into maximum clock state before tests start
+        for j in range(0, maximum):
+            s += 2
+        string_in = self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial()
+        # print('old test')
+        self.performance_tests((self.old_fullp, string_in))
+        sum_old = 0
+        for i in range(0, maximum):
+            # string_in = self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial()
+            string_in = self.simulate_serial()
+            sum_old += self.performance_tests((self.old_fullp, string_in))
+        # print('new test')
+        self.performance_tests((self.new_fullp, string_in))
+        sum_new = 0
+        for i in range(0, maximum):
+            # string_in = self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial()+ self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial()+ self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial() + self.simulate_serial()
+            string_in = self.simulate_serial()
+            sum_new += self.performance_tests((self.new_fullp, string_in))
+        print('Old Full Parse fn:: sum: {}   avg: {}'.format(sum_old, sum_old / maximum))
+        print('New Full Parse fn:: sum: {}   avg: {}'.format(sum_new, sum_new / maximum))
+        pass
+
+    def new_fullp(self, data):
+        string_in = data
+        data_in = (string_in, 8)
+        parser.parse_full_new_helper(self.parse, data_in)
+        pass
+
+    def old_fullp(self, data):
+        string_in = data
+        data_in = (string_in, 8)
+        parser.parse_full(self.parse, data_in)
         pass
 
     def performance_tests(self, data):
@@ -321,31 +379,10 @@ def main():
     plot = plots.Plots()
     prs = parser(data_storage, plots)
     pt = ParserTester(data_store, plot, prs)
+    # pt.helper_compare()
+    pt.full_parse_compare()
     # pt.random_test()
     # pt.performance_tests(pt.random_test)
-    maximum = 10000
-    s = -1000
-    for j in range(0, maximum*maximum):
-        s += 2
-    string_in = pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial()
-    print('old test')
-    pt.performance_tests((pt.old_parseh, string_in))
-    sum_old = 0
-    for i in range(0, maximum):
-        string_in = pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial()
-        sum_old += pt.performance_tests((pt.old_parseh, string_in))
-
-    print('new test')
-    pt.performance_tests((pt.new_parseh, string_in))
-    sum_new = 0
-    for i in range(0, maximum):
-        string_in = pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial()
-
-        sum_new += pt.performance_tests((pt.new_parseh, string_in))
-    print('old sum: {} avg: {}'.format(sum_old, sum_old / maximum))
-    print('new sum: {} avg: {}'.format(sum_new, sum_new / maximum))
-
-
     # pt.test_full()
 
 

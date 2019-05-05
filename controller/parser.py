@@ -192,7 +192,7 @@ class Parser:
         """
         data_string = data[0]
         data_length = data[1]
-        parse_helped_data = self.parse_helper((data_string,data_length))
+        parse_helped_data = self.parse_helper((data_string, data_length))
 
         if parse_helped_data[0] == -1:
             data_list = []
@@ -213,6 +213,48 @@ class Parser:
                 return 200, data_list, parse_helped_data[1]
         return status,
 
+    def parse_full_new_helper(self, data):
+        """
+        :param data: the string of text that should be parsed in a tuple with length of datastring
+        :return: a tuple containing (status, listOfParsedData, remainingString)
+        status: status code: 200 means parse was successful
+        listOfParsedData: a list containing lists of length 8 (the telemetry data)
+        remainingString: the data that was not able to be parsed at the end of the data string
+        """
+        status = 500  # error codes or correlation id
+        """
+        Error Codes: 
+        500 error occured
+        200 data was successfully parsed, remainingString is non-empty
+        300 data was successfully parsed, remaining string is empty
+        400 no data was parsed from the string
+        """
+        data_string = data[0]
+        data_length = data[1]
+        parse_helped_data = self.parse_help_fast((data_string, data_length))
+
+        if parse_helped_data[0] == -1:
+            data_list = []
+            status = 400
+        else:
+            data_list = [parse_helped_data[0][0:data_length]]
+
+        while len(re.split(r',', parse_helped_data[1], data_length+2)) > (data_length+1):
+            parse_helped_data = self.parse_help_fast((parse_helped_data[1], data_length))
+            if parse_helped_data[0] == -1:
+                break
+            data_list.append(parse_helped_data[0][0:data_length])
+            pass
+        if len(data_list) > 0:  # TODO: implement parsing logic here
+            if len(parse_helped_data) == 1:
+                return 300, data_list, ''
+            else:
+                return 200, data_list, parse_helped_data[1]
+        return status,
+
+    def parse_full_fast(self, data):
+
+        pass
 
     def parse_helper(self, data):
         """
@@ -277,20 +319,20 @@ class Parser:
         string_input = data[0]
         number_commas = data[1]
         # string_list = list(string_input)
-        s_number = 0
+        s_number = string_input.count('S')
         # s_locations = []
-        e_number = 0
-        comma_number = 0
-        for char in string_input:
-            if char == ',':
-                comma_number += 1
-            elif char == 'S':
-                s_number += 1
-            elif char == 'E':
-                e_number += 1
-            if s_number > 1 and e_number > 1 and comma_number > number_commas:
-                break
-            pass
+        e_number = string_input.count('E')
+        comma_number = string_input.count(',')
+        # for char in string_input:
+        #     if char == ',':
+        #         comma_number += 1
+        #     elif char == 'S':
+        #         s_number += 1
+        #     elif char == 'E':
+        #         e_number += 1
+        #     if s_number >= 1 and e_number >= 1 and comma_number >= number_commas:
+        #         break
+        #     pass
         # print('S: {}  E: {}  ,: {}'.format(s_number, e_number, comma_number)) # TODO: remove debug code
         if s_number < 1 or e_number < 1 or comma_number < number_commas:
             return -1, string_input
@@ -299,7 +341,8 @@ class Parser:
             return -1, string_input
         working_string = split_input[1]
         values = re.split(',', working_string, number_commas)
-        return values, ''
+        # remaining_string = re.split('E', values[number_commas-1], 1)
+        return values, values[number_commas-1][-1:]
         pass
 
     def find_angle(self, data):
