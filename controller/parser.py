@@ -36,17 +36,19 @@ class Parser:
         # use above to find port of arduino on mac
         # self.port = "/dev/tty.usbserial-A104IBE7"
         # self.port = "/dev/tty.usbmodem14201"
-        self.port = "/dev/tty.usbmodem14101"
-
-        self.port2 = "/dev/tty.usbmodem14101"
+        self.port = "/dev/tty.usbserial-00002014"
+        #
+        # self.port2 = "/dev/tty.usbserial-00002014"
         self.baud = 9600
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
         self.timeout = 3  # sec
         # setup for telemetry serial
-        # ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
+        # ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits, timeout=self.timeout)
         # self.serial_telemetry = ser
+        # if ser.isOpen():
+        #     ser.close()
         # if not ser.isOpen():
         #     ser.open()
         # else:
@@ -249,7 +251,109 @@ class Parser:
             # print(remaining_data)
         return parsed, remaining_data
 
+<<<<<<< Updated upstream
     def simulate_serial(self):
+=======
+    def parse_help_fast(self, data):
+        '''
+
+        :param data: Tuple (d0, d1):
+        d0 is a string to be parsed
+        d1 is the number of commas in the complete telemetry string
+        :return:
+        -1 if insufficient number of commas, S or E
+
+        '''
+        # split the data tuple into the actual data, and the length of the data string
+        string_input = data[0]
+        number_commas = data[1]
+        string_list = list(string_input)
+        s_number = 0
+        s_locations = []
+        e_number = 0
+        comma_number = 0
+        for char in string_list:
+            if char == ',':
+                comma_number += 1
+            elif char == 'S':
+                s_number += 1
+            elif char == 'E':
+                e_number += 1
+            pass
+        # print('S: {}  E: {}  ,: {}'.format(s_number, e_number, comma_number)) # TODO: remove debug code
+        if s_number < 1 or e_number < 1 or comma_number < number_commas:
+            return -1, string_input
+        split_input = re.split('S', string_input, 1)
+        if len(split_input) == 1:
+            return -1, string_input
+        working_string = split_input[1]
+        values = re.split(',', working_string, number_commas)
+        return values, ''
+        pass
+
+    def find_angle(self, data):
+        '''calculate antenna direction given rocket coordinates and ground station coordinates'''
+        angle = [] # Ordered as angle from east, then angle from ground
+        # coordinates of ground station and rocket
+        ground_x = ground_lat
+        ground_y = ground_long
+        rocket_x = float(data[0])
+        rocket_y = float(data[1])
+        rocket_alt = float(data[2])
+        if rocket_x == 0 or rocket_y == 0:
+            return -10;
+        # Covert to decimal degrees
+        '''rocket_x = self.convert_DMS_to_DD(rocket_x)
+        rocket_y = self.convert_DMS_to_DD(rocket_y)
+        rocket_alt = self.convert_DMS_to_DD(rocket_alt)
+        '''
+        # Convert DecDegs to radians
+        ground_x = (math.pi/180)*ground_x
+        ground_y = (math.pi/180)*ground_y
+        rocket_x = (math.pi/180)*rocket_x
+        rocket_y = (math.pi/180)*rocket_y
+        # Compute theta
+        theta = 0.0
+        t = (180/math.pi)*math.atan((rocket_y - ground_y)/(rocket_x-ground_x))
+        if abs(rocket_x - ground_x) < math.pow(10, -9) and rocket_y > ground_y: # Rocket is directly N from ground station
+            theta = 90
+        elif abs(rocket_x - ground_x) < math.pow(10, -9) and rocket_y < ground_y: # Rocket is directly S from ground station
+            theta = 270
+        elif rocket_x > ground_x and abs(rocket_y - ground_y) < math.pow(10, -9): # Rocket is directly E from ground station
+            theta = 0
+        elif rocket_x < ground_x and abs(rocket_y - ground_y) < math.pow(10, -9): # Rocket is directly W from ground station
+            theta = 180
+        elif rocket_x < ground_x and rocket_y > ground_y: # Rocket is NW from ground station
+            theta = 180+t
+        elif rocket_x < ground_x and rocket_y < ground_y: # Rocket is SW from ground station
+            theta = 180+t
+        elif rocket_x > ground_x and rocket_y < ground_y: # Rocket is SE from ground station
+            theta = 360+t
+        elif rocket_x > ground_x and rocket_y > ground_y: # Rocket is NE from ground station
+            theta = t
+
+        angle.append(theta)
+
+        # Compute phi
+        # Distance between origin and P, projection of rocket onto xy-plane
+        d = 2*6371000*math.asin(math.sqrt(math.pow((math.sin((rocket_y-ground_y)/2)), 2) + math.cos(ground_x)*math.cos(rocket_x)*math.pow(math.sin((rocket_x-ground_x)/2), 2)))
+        phi = (180/math.pi)*math.atan((rocket_alt - ground_alt)/d)
+        # TODO: format phi and theta better, how many decimal places?
+        angle.append(phi)
+
+        return angle
+
+    def convert_DMS_to_DD(self, deg_min):
+        """ Converts degree minutes seconds into decimal degrees """
+        min_val = 0.0
+        dec_deg = 0.0
+        min_val = math.fmod(deg_min, 100.0)
+        deg_min = (deg_min / 100)
+        dec_deg = deg_min + (min_val / 60)
+        return dec_deg
+
+    def simulate_telemetry(self):
+>>>>>>> Stashed changes
         """"
         output a string that should be somewhat representative of the string that will be sent by the AV bay
         """
