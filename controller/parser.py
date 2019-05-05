@@ -263,6 +263,43 @@ class Parser:
             # print(remaining_data)
         return parsed, remaining_data
 
+    def parse_help_fast(self, data):
+        '''
+
+        :param data: Tuple (d0, d1):
+        d0 is a string to be parsed
+        d1 is the number of commas in the complete telemetry string
+        :return:
+        -1 if insufficient number of commas, S or E
+
+        '''
+        # split the data tuple into the actual data, and the length of the data string
+        string_input = data[0]
+        number_commas = data[1]
+        string_list = list(string_input)
+        s_number = 0
+        s_locations = []
+        e_number = 0
+        comma_number = 0
+        for char in string_list:
+            if char == ',':
+                comma_number += 1
+            elif char == 'S':
+                s_number += 1
+            elif char == 'E':
+                e_number += 1
+            pass
+        # print('S: {}  E: {}  ,: {}'.format(s_number, e_number, comma_number)) # TODO: remove debug code
+        if s_number < 1 or e_number < 1 or comma_number < number_commas:
+            return -1, string_input
+        split_input = re.split('S', string_input, 1)
+        if len(split_input) == 1:
+            return -1, string_input
+        working_string = split_input[1]
+        values = re.split(',', working_string, number_commas)
+        return values, ''
+        pass
+
     def find_angle(self, data):
         '''calculate antenna direction given rocket coordinates and ground station coordinates'''
         angle = [] # Ordered as angle from east, then angle from ground
