@@ -200,8 +200,8 @@ class Parser:
         else:
             data_list = [parse_helped_data[0][0:data_length]]
 
-        while len(re.split(r',',parse_helped_data[1])) > (data_length+1):
-            parse_helped_data = self.parse_helper((parse_helped_data[1],data_length))
+        while len(re.split(r',', parse_helped_data[1], data_length+2)) > (data_length+1):
+            parse_helped_data = self.parse_helper((parse_helped_data[1], data_length))
             if parse_helped_data[0] == -1:
                 break
             data_list.append(parse_helped_data[0][0:data_length])
