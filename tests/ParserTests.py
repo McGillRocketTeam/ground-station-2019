@@ -323,23 +323,27 @@ def main():
     pt = ParserTester(data_store, plot, prs)
     # pt.random_test()
     # pt.performance_tests(pt.random_test)
+    maximum = 10000
+    s = -1000
+    for j in range(0, maximum*maximum):
+        s += 2
     string_in = pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial()
     print('old test')
     pt.performance_tests((pt.old_parseh, string_in))
     sum_old = 0
-    for i in range(0, 1000):
+    for i in range(0, maximum):
         string_in = pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial()
         sum_old += pt.performance_tests((pt.old_parseh, string_in))
 
     print('new test')
     pt.performance_tests((pt.new_parseh, string_in))
     sum_new = 0
-    for i in range(0, 1000):
+    for i in range(0, maximum):
         string_in = pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial() + pt.simulate_serial()
 
         sum_new += pt.performance_tests((pt.new_parseh, string_in))
-    print('old sum: {} avg: {}'.format(sum_old, sum_old / 1000))
-    print('new sum: {} avg: {}'.format(sum_new, sum_new / 1000))
+    print('old sum: {} avg: {}'.format(sum_old, sum_old / maximum))
+    print('new sum: {} avg: {}'.format(sum_new, sum_new / maximum))
 
 
     # pt.test_full()
