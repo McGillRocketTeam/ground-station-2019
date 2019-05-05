@@ -276,18 +276,20 @@ class Parser:
         # split the data tuple into the actual data, and the length of the data string
         string_input = data[0]
         number_commas = data[1]
-        string_list = list(string_input)
+        # string_list = list(string_input)
         s_number = 0
-        s_locations = []
+        # s_locations = []
         e_number = 0
         comma_number = 0
-        for char in string_list:
+        for char in string_input:
             if char == ',':
                 comma_number += 1
             elif char == 'S':
                 s_number += 1
             elif char == 'E':
                 e_number += 1
+            if s_number > 1 and e_number > 1 and comma_number > number_commas:
+                break
             pass
         # print('S: {}  E: {}  ,: {}'.format(s_number, e_number, comma_number)) # TODO: remove debug code
         if s_number < 1 or e_number < 1 or comma_number < number_commas:
