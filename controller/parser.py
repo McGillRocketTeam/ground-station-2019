@@ -10,7 +10,7 @@ import datetime
 import math
 
 """
-data format: Slat,long,alt,time,temp,vel,acc,sat,E
+data format: Slat,long,alt,time,temp,vel,acc,sat,E\n
 backup GPS data: lat, long, alt, sat#
 """
 telemetry_data_length = 8  # Current length of telemetry data string
@@ -75,10 +75,10 @@ class Parser:
 
         while loop_control:
             # time.sleep(0.5)
-            real_data = False  # Controls if data is simulated or from actual serial reader
+            real_data = True  # Controls if data is simulated or from actual serial reader
             caladan_data = False  # Controls if we want to use caladan data
             if real_data:
-                # telemetry_data += self.serial_telemetry.read(size=1000).decode('utf-8')
+                telemetry_data += self.serial_telemetry.read_until(expected='\n', size=1000).decode('utf-8')
                 # gps_data += self.serial_gps.read(size=1000).decode('utf-8')
 
                 print(telemetry_data)
@@ -342,8 +342,89 @@ class Parser:
         working_string = split_input[1]
         values = re.split(',', working_string, number_commas)
         # remaining_string = re.split('E', values[number_commas-1], 1)
-        return values, values[number_commas-1][-1:]
+        return values, values[number_commas][1:]
         pass
+
+    def parse_help_ass(self, data):
+        """
+        Modified version for alternating big and little strings.
+        big: Sdata(8),E
+        little: sdata(3),e
+        :param data: Tuple (d0, d1):
+        d0 is a string to be parsed
+        d1 is the number of commas in the complete telemetry string
+        :return:
+        -1 if insufficient number of commas, S or E
+        """
+        # split the data tuple into the actual data, and the length of the data string
+        big_fail = False
+        little_fail = False
+        little_comma_count = 3
+        string_input = data[0]
+        number_commas = data[1]
+        # string_list = list(string_input)
+        big_s_number = string_input.count('S')
+        # s_locations = []
+        big_e_number = string_input.count('E')
+        s_number = string_input.count('s')
+        e_number = string_input.count('e')
+        comma_number = string_input.count(',')
+        # for char in string_input:
+        #     if char == ',':
+        #         comma_number += 1
+        #     elif char == 'S':
+        #         big_s_number += 1
+        #     elif char == 'E':
+        #         big_e_number += 1
+        #     if big_s_number >= 1 and big_e_number >= 1 and comma_number >= number_commas:
+        #         break
+        #     pass
+        # print('S: {}  E: {}  ,: {}'.format(big_s_number, big_e_number, comma_number)) # TODO: remove debug code
+        if big_s_number < 1 or big_e_number < 1 or comma_number < number_commas:
+            big_fail = True
+        if s_number < 1 or e_number < 1 or comma_number < little_comma_count:
+            little_fail = True
+        if little_fail and big_fail:
+            return -1, string_input
+        split_input_big = re.split('S', string_input, 1)
+        split_input_little = re.split('s', string_input, 1)
+        big_split_success = False if len(split_input_big) == 0 else True
+        little_split_success = False if len(split_input_little) == 0 else True
+
+        if not little_split_success and not big_split_success:
+            return -1, string_input
+
+        if len(split_input_big[0]) < len(split_input_little[0]):
+            big_if_true = True
+
+            pass
+        working_string = split_input_big[1]
+        values = re.split(',', working_string, number_commas)
+        # remaining_string = re.split('E', values[number_commas-1], 1)
+        return values, values[number_commas][1:]
+        pass
+
+    def parse_simple_split(self, data):
+        """
+
+        :param data: (d1, d2, d3)
+        :return:
+        """
+        string_in = data[0]
+        big_length = data[1]
+        small_length = data[2]
+        split_data = re.split(',', string_in)
+        if len(split_data) == big_length or len(split_data == small_length):
+            split_data[0] = split_data[0][1:]
+            split_data = split_data[0:-1]
+            # TODO: check that individial entries are valid
+            pass
+        else:
+            return -1, ''
+        return split_data, ''
+        pass
+
+
 
     def find_angle(self, data):
         '''calculate antenna direction given rocket coordinates and ground station coordinates'''

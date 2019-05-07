@@ -134,13 +134,31 @@ class ParserTester:
     def new_fullp(self, data):
         string_in = data
         data_in = (string_in, 8)
-        parser.parse_full_new_helper(self.parse, data_in)
-        pass
+        x = parser.parse_full_new_helper(self.parse, data_in)
+        return x
 
     def old_fullp(self, data):
         string_in = data
         data_in = (string_in, 8)
-        parser.parse_full(self.parse, data_in)
+        x = parser.parse_full(self.parse, data_in)
+        return x
+
+    def log_test(self, data):
+        """
+        :param data: data to log with log_parse
+        """
+        parser.log_parse(self.parse, data)
+        pass
+
+    def write_perform_test(self, name):
+        maximum = 1_000_000
+        sum = 0
+        for i in range(0, maximum):
+            x = parser.parse_full_fast(self.parse, (self.simulate_serial(), 8))
+            y = '{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n{}\n'.format(x, x, x, x, x, x, x, x, x, x, x, x, x)
+            sum += self.performance_tests((self.log_test, y))
+        avg = sum / maximum
+        print('{} ::  sum: {}   avg: {}'.format(name, sum, avg))
         pass
 
     def performance_tests(self, data):
@@ -341,6 +359,10 @@ class ParserTester:
                str(random_data[3]) + ',' + str(random_data[4]) + ',' + str(random_data[5]) + ',' + \
                str(random_data[6]) + ',' + str(random_data[7]) + ',E'
 
+    def simulate_small_serial(self):
+        random_data = self.generate_random_data_array()
+        return 's' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',e'
+
     def serial_sim_test(self, data):
         '''
 
@@ -369,7 +391,17 @@ class ParserTester:
         # To read data written to slave serial
         return os.read(master, data).decode('utf-8')
 
-
+    def rando(self):
+        s = self.simulate_serial()
+        s += self.simulate_small_serial()
+        s += self.simulate_serial()
+        t = parser.parse_full_new_helper(self.parse, (s, 8))
+        print('{} \n {}\n\n'.format(s, t))
+        s = t[2]
+        s += self.simulate_serial()
+        t = parser.parse_full_new_helper(self.parse, (s, 8))
+        print('{} \n {}'.format(s, t))
+        pass
 
 def main():
     """
@@ -380,7 +412,9 @@ def main():
     prs = parser(data_storage, plots)
     pt = ParserTester(data_store, plot, prs)
     # pt.helper_compare()
-    pt.full_parse_compare()
+    # pt.full_parse_compare()
+    # pt.write_perform_test('ParseLogTest:::  ')
+    pt.rando()
     # pt.random_test()
     # pt.performance_tests(pt.random_test)
     # pt.test_full()
