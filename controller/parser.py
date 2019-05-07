@@ -35,11 +35,12 @@ class Parser:
         # ls /dev/tty.*
         # use above to find port of arduino on mac
         # self.port = "/dev/tty.usbserial-A104IBE7"
-        # self.port = "/dev/tty.usbmodem14201"
-        self.port = "/dev/tty.usbserial-00001014"
+        self.port = "/dev/tty.usbserial-00002014"
+        # self.port = "/dev/tty.usbserial-00001014"
 
         # self.port2 = "/dev/tty.usbmodem14101"
-        self.baud = 9600 # 1200 bytes per second
+        # self.baud = 9600 # 1200 bytes per second
+        self.baud = 115200
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
@@ -140,18 +141,18 @@ class Parser:
                     self.data_storage.save_gps_data(gps_data_chunk)
 
                     """ Plot telemetry data and update GUI """
-                    try:
-                        self.plots.plot_telemetry_data(data_chunk)
-                    except:
-                        print("Error plotting telemetry data")
-                    try:
-                        self.plots.plot_gps_data(data_chunk)
-                    except:
-                        print("Error plotting GPS data")
-                    try:
-                        self.plots.update_plots()
-                    except:
-                        print("Error updating plots")
+                    # try:
+                    #     self.plots.plot_telemetry_data(data_chunk)
+                    # except:
+                    #     print("Error plotting telemetry data")
+                    # try:
+                    #     self.plots.plot_gps_data(data_chunk)
+                    # except:
+                    #     print("Error plotting GPS data")
+                    # try:
+                    #     self.plots.update_plots()
+                    # except:
+                    #     print("Error updating plots")
 
                     if update_antenna:
                         counter_antenna += 1
@@ -420,17 +421,23 @@ class Parser:
         big_length = data[1]
         small_length = data[2]
         split_data = re.split(',', string_in)
-        if len(split_data) == big_length or len(split_data) == small_length:
+        if len(split_data) == big_length+1 or len(split_data) == small_length+1:
             split_data[0] = split_data[0][1:]
             split_data = split_data[0:-1]
-            # TODO: check that individial entries are valid
+            # TODO: check that individual entries are valid
             pass
         else:
+            return -1, ''
+        try:
+            self.convert_string_list_float(split_data)
+        except:
             return -1, ''
         return split_data, ''
         pass
 
-
+    def convert_string_list_float(self, data):
+        listout = [float(x) for x in data]
+        return listout
 
     def find_angle(self, data):
         '''calculate antenna direction given rocket coordinates and ground station coordinates'''
