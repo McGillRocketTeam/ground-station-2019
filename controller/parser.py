@@ -36,21 +36,21 @@ class Parser:
         # use above to find port of arduino on mac
         # self.port = "/dev/tty.usbserial-A104IBE7"
         # self.port = "/dev/tty.usbmodem14201"
-        self.port = "/dev/tty.usbmodem14101"
+        self.port = "/dev/tty.usbserial-00001014"
 
-        self.port2 = "/dev/tty.usbmodem14101"
-        self.baud = 9600
+        # self.port2 = "/dev/tty.usbmodem14101"
+        self.baud = 9600 # 1200 bytes per second
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
         self.timeout = 3  # sec
         # setup for telemetry serial
-        # ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
-        # self.serial_telemetry = ser
-        # if not ser.isOpen():
-        #     ser.open()
-        # else:
-        #     pass
+        ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
+        self.serial_telemetry = ser
+        if not ser.isOpen():
+            ser.open()
+        else:
+            pass
 
         # Setup for gps serial
         # ser2 = serial.Serial(self.port2, self.baud, self.byte, self.parity, self.stopbits)
@@ -78,7 +78,8 @@ class Parser:
             real_data = True  # Controls if data is simulated or from actual serial reader
             caladan_data = False  # Controls if we want to use caladan data
             if real_data:
-                telemetry_data += self.serial_telemetry.read_until(expected='\n', size=1000).decode('utf-8')
+                # telemetry_data += self.serial_telemetry.read_until(terminator='\n', size=55).decode('utf-8')
+                telemetry_data = self.serial_telemetry.readline().decode('utf-8')
                 # gps_data += self.serial_gps.read(size=1000).decode('utf-8')
 
                 print(telemetry_data)
@@ -98,7 +99,7 @@ class Parser:
 
             """ Process telemetry data """
             # processing for full telemetry data:
-            result = self.parse_full((telemetry_data, telemetry_data_length))
+            result = self.parse_full_new_helper((telemetry_data, telemetry_data_length))
             print(result)
             return_data = self.process_parsed((result, (200, 300), counter_antenna, telemetry_data, True, True))
             telemetry_data = return_data[0]
@@ -155,10 +156,10 @@ class Parser:
                     if update_antenna:
                         counter_antenna += 1
 
-                    if counter_antenna % 2 == 0 and update_antenna:  # Is 1000 the best number for this?
-                        antenna_angle = self.find_angle(gps_data_chunk)
-                        self.plots.antennaAngle.configure(
-                            text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
+                    # if counter_antenna % 2 == 0 and update_antenna:  # Is 1000 the best number for this?
+                    #     antenna_angle = self.find_angle(gps_data_chunk)
+                    #     self.plots.antennaAngle.configure(
+                    #         text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
 
                     if result[0] == e1:
                         t_data = result[2]
@@ -231,7 +232,9 @@ class Parser:
         """
         data_string = data[0]
         data_length = data[1]
-        parse_helped_data = self.parse_help_fast((data_string, data_length))
+        little_data_length = 3
+        parse_helped_data = self.parse_simple_split((data_string, data_length, little_data_length))
+
 
         if parse_helped_data[0] == -1:
             data_list = []
@@ -240,7 +243,7 @@ class Parser:
             data_list = [parse_helped_data[0][0:data_length]]
 
         while len(re.split(r',', parse_helped_data[1], data_length+2)) > (data_length+1):
-            parse_helped_data = self.parse_help_fast((parse_helped_data[1], data_length))
+            parse_helped_data = self.parse_simple_split((parse_helped_data[1], data_length, little_data_length))
             if parse_helped_data[0] == -1:
                 break
             data_list.append(parse_helped_data[0][0:data_length])
@@ -407,14 +410,17 @@ class Parser:
     def parse_simple_split(self, data):
         """
 
-        :param data: (d1, d2, d3)
+        :param data: (d0, d1, d2)
+        d0 = data to split
+        d1 = big data length
+        d2 = small data length
         :return:
         """
         string_in = data[0]
         big_length = data[1]
         small_length = data[2]
         split_data = re.split(',', string_in)
-        if len(split_data) == big_length or len(split_data == small_length):
+        if len(split_data) == big_length or len(split_data) == small_length:
             split_data[0] = split_data[0][1:]
             split_data = split_data[0:-1]
             # TODO: check that individial entries are valid
