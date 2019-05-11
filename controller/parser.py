@@ -1,13 +1,20 @@
+import sys
 import time
 
+import qdarkstyle
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication
+
 import model.datastorage as data_storage
-import views.plots as plots
+import view as view
 import serial
 from random import randint
 import random
 import re
 import datetime
 import math
+
+from guiLoop import guiLoop
 
 """
 data format: Slat,long,alt,time,temp,vel,acc,sat,E
@@ -60,6 +67,7 @@ class Parser:
         # else:
         #     pass
 
+    @guiLoop
     def parse(self):
         """
         Contains the main while loop is used to repeatedly parse the received data
@@ -112,6 +120,8 @@ class Parser:
             # return_gps_data = self.process_parsed((gps_result,(200,300),counter_antenna,gps_data,False, False))
             # gps_data = return_gps_data[0]
 
+            yield 0.05
+
     def process_parsed(self, data):
         """
         errorCodeTuple: (200,300)
@@ -155,10 +165,10 @@ class Parser:
                     if update_antenna:
                         counter_antenna += 1
 
-                    if counter_antenna % 2 == 0 and update_antenna:  # Is 1000 the best number for this?
-                        antenna_angle = self.find_angle(gps_data_chunk)
-                        self.plots.antennaAngle.configure(
-                            text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
+                    # if counter_antenna % 2 == 0 and update_antenna:  # Is 1000 the best number for this?
+                    #     antenna_angle = self.find_angle(gps_data_chunk)
+                    #     self.plots.antennaAngle.configure(
+                    #         text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
 
                     if result[0] == e1:
                         t_data = result[2]
@@ -421,9 +431,15 @@ class Parser:
 
 def main():
     data_store = data_storage.DataStorage()
-    plots_instance = plots.Plots()
+
+    app = QApplication(sys.argv)
+    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+    plots_instance = view.view()
+
     parser = Parser(data_store, plots_instance)
     parser.parse()
+
+    sys.exit(app.exec_())
 
 
 if __name__ == "__main__":

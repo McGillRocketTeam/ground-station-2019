@@ -1,6 +1,7 @@
 import sys
 from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QLabel, QGridLayout)
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import QTimer
 from pyqtgraph.Qt import QtCore
 import pyqtgraph as pg
 import qdarkstyle
@@ -106,7 +107,12 @@ class view(QWidget):
         test1 = np.random.normal(size=1000)
         test2 = np.random.normal(size=1000)
 
-        self.altitude_graph.plot(test1, test2, pen='r')
+        self.altitude_graph.plot(test1, test2)
+        # self.altitude_graph.plot(float(telemetry_data[3]), float(telemetry_data[2]))
+        # self.velocity_graph.plot(float(telemetry_data[3]), float(telemetry_data[5]))
+        # self.acceleration_graph.plot(float(telemetry_data[3]), float(telemetry_data[6]))
+        # self.temperature_graph.plot(float(telemetry_data[3]), float(telemetry_data[4]))
+        # self.paintEvent(self.altitude_graph.plot(float(telemetry_data[3]), float(telemetry_data[2])))
 
 
     def plot_gps_data(self, telemetry_data):
@@ -123,8 +129,15 @@ class view(QWidget):
 
 
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
-    window = view()
-    sys.exit(app.exec_())
+# if __name__ == '__main__':
+#     app = QApplication(sys.argv)
+#     app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+#     window = view()
+#     timer = QTimer()
+#     timer.timeout.connect(window.repaint)
+#     timer.start(1000)
+#     #while (True):
+#         #window.plot_telemetry_data([1])
+#         #window.repaint()
+#         #window.update()
+#     sys.exit(app.exec_())
