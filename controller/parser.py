@@ -10,7 +10,7 @@ import datetime
 import math
 
 """
-data format: Slat,long,alt,time,temp,vel,acc,sat,E
+data format: Slat,long,alt,time,temp,vel,acc,sat,E\n
 backup GPS data: lat, long, alt, sat#
 """
 telemetry_data_length = 8  # Current length of telemetry data string
@@ -35,22 +35,23 @@ class Parser:
         # ls /dev/tty.*
         # use above to find port of arduino on mac
         # self.port = "/dev/tty.usbserial-A104IBE7"
-        # self.port = "/dev/tty.usbmodem14201"
-        self.port = "/dev/tty.usbmodem14101"
+        self.port = "/dev/tty.usbserial-00002014"
+        # self.port = "/dev/tty.usbserial-00001014"
 
-        self.port2 = "/dev/tty.usbmodem14101"
-        self.baud = 9600
+        # self.port2 = "/dev/tty.usbmodem14101"
+        # self.baud = 9600 # 1200 bytes per second
+        self.baud = 115200
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
         self.timeout = 3  # sec
         # setup for telemetry serial
-        # ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
-        # self.serial_telemetry = ser
-        # if not ser.isOpen():
-        #     ser.open()
-        # else:
-        #     pass
+        ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
+        self.serial_telemetry = ser
+        if not ser.isOpen():
+            ser.open()
+        else:
+            pass
 
         # Setup for gps serial
         # ser2 = serial.Serial(self.port2, self.baud, self.byte, self.parity, self.stopbits)
@@ -75,10 +76,11 @@ class Parser:
 
         while loop_control:
             # time.sleep(0.5)
-            real_data = False  # Controls if data is simulated or from actual serial reader
+            real_data = True  # Controls if data is simulated or from actual serial reader
             caladan_data = False  # Controls if we want to use caladan data
             if real_data:
-                # telemetry_data += self.serial_telemetry.read(size=1000).decode('utf-8')
+                # telemetry_data += self.serial_telemetry.read_until(terminator='\n', size=55).decode('utf-8')
+                telemetry_data = self.serial_telemetry.readline().decode('utf-8')
                 # gps_data += self.serial_gps.read(size=1000).decode('utf-8')
 
                 print(telemetry_data)
@@ -98,7 +100,7 @@ class Parser:
 
             """ Process telemetry data """
             # processing for full telemetry data:
-            result = self.parse_full((telemetry_data, telemetry_data_length))
+            result = self.parse_full_new_helper((telemetry_data, telemetry_data_length))
             print(result)
             return_data = self.process_parsed((result, (200, 300), counter_antenna, telemetry_data, True, True))
             telemetry_data = return_data[0]
@@ -139,26 +141,26 @@ class Parser:
                     self.data_storage.save_gps_data(gps_data_chunk)
 
                     """ Plot telemetry data and update GUI """
-                    try:
-                        self.plots.plot_telemetry_data(data_chunk)
-                    except:
-                        print("Error plotting telemetry data")
-                    try:
-                        self.plots.plot_gps_data(data_chunk)
-                    except:
-                        print("Error plotting GPS data")
-                    try:
-                        self.plots.update_plots()
-                    except:
-                        print("Error updating plots")
+                    # try:
+                    #     self.plots.plot_telemetry_data(data_chunk)
+                    # except:
+                    #     print("Error plotting telemetry data")
+                    # try:
+                    #     self.plots.plot_gps_data(data_chunk)
+                    # except:
+                    #     print("Error plotting GPS data")
+                    # try:
+                    #     self.plots.update_plots()
+                    # except:
+                    #     print("Error updating plots")
 
                     if update_antenna:
                         counter_antenna += 1
 
-                    if counter_antenna % 2 == 0 and update_antenna:  # Is 1000 the best number for this?
-                        antenna_angle = self.find_angle(gps_data_chunk)
-                        self.plots.antennaAngle.configure(
-                            text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
+                    # if counter_antenna % 2 == 0 and update_antenna:  # Is 1000 the best number for this?
+                    #     antenna_angle = self.find_angle(gps_data_chunk)
+                    #     self.plots.antennaAngle.configure(
+                    #         text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
 
                     if result[0] == e1:
                         t_data = result[2]
@@ -192,7 +194,7 @@ class Parser:
         """
         data_string = data[0]
         data_length = data[1]
-        parse_helped_data = self.parse_helper((data_string,data_length))
+        parse_helped_data = self.parse_helper((data_string, data_length))
 
         if parse_helped_data[0] == -1:
             data_list = []
@@ -200,8 +202,8 @@ class Parser:
         else:
             data_list = [parse_helped_data[0][0:data_length]]
 
-        while len(re.split(r',',parse_helped_data[1])) > (data_length+1):
-            parse_helped_data = self.parse_helper((parse_helped_data[1],data_length))
+        while len(re.split(r',', parse_helped_data[1], data_length+2)) > (data_length+1):
+            parse_helped_data = self.parse_helper((parse_helped_data[1], data_length))
             if parse_helped_data[0] == -1:
                 break
             data_list.append(parse_helped_data[0][0:data_length])
@@ -213,6 +215,50 @@ class Parser:
                 return 200, data_list, parse_helped_data[1]
         return status,
 
+    def parse_full_new_helper(self, data):
+        """
+        :param data: the string of text that should be parsed in a tuple with length of datastring
+        :return: a tuple containing (status, listOfParsedData, remainingString)
+        status: status code: 200 means parse was successful
+        listOfParsedData: a list containing lists of length 8 (the telemetry data)
+        remainingString: the data that was not able to be parsed at the end of the data string
+        """
+        status = 500  # error codes or correlation id
+        """
+        Error Codes: 
+        500 error occured
+        200 data was successfully parsed, remainingString is non-empty
+        300 data was successfully parsed, remaining string is empty
+        400 no data was parsed from the string
+        """
+        data_string = data[0]
+        data_length = data[1]
+        little_data_length = 3
+        parse_helped_data = self.parse_simple_split((data_string, data_length, little_data_length))
+
+
+        if parse_helped_data[0] == -1:
+            data_list = []
+            status = 400
+        else:
+            data_list = [parse_helped_data[0][0:data_length]]
+
+        while len(re.split(r',', parse_helped_data[1], data_length+2)) > (data_length+1):
+            parse_helped_data = self.parse_simple_split((parse_helped_data[1], data_length, little_data_length))
+            if parse_helped_data[0] == -1:
+                break
+            data_list.append(parse_helped_data[0][0:data_length])
+            pass
+        if len(data_list) > 0:  # TODO: implement parsing logic here
+            if len(parse_helped_data) == 1:
+                return 300, data_list, ''
+            else:
+                return 200, data_list, parse_helped_data[1]
+        return status,
+
+    def parse_full_fast(self, data):
+
+        pass
 
     def parse_helper(self, data):
         """
@@ -262,6 +308,136 @@ class Parser:
             # print(parsed)
             # print(remaining_data)
         return parsed, remaining_data
+
+    def parse_help_fast(self, data):
+        '''
+
+        :param data: Tuple (d0, d1):
+        d0 is a string to be parsed
+        d1 is the number of commas in the complete telemetry string
+        :return:
+        -1 if insufficient number of commas, S or E
+
+        '''
+        # split the data tuple into the actual data, and the length of the data string
+        string_input = data[0]
+        number_commas = data[1]
+        # string_list = list(string_input)
+        s_number = string_input.count('S')
+        # s_locations = []
+        e_number = string_input.count('E')
+        comma_number = string_input.count(',')
+        # for char in string_input:
+        #     if char == ',':
+        #         comma_number += 1
+        #     elif char == 'S':
+        #         s_number += 1
+        #     elif char == 'E':
+        #         e_number += 1
+        #     if s_number >= 1 and e_number >= 1 and comma_number >= number_commas:
+        #         break
+        #     pass
+        # print('S: {}  E: {}  ,: {}'.format(s_number, e_number, comma_number)) # TODO: remove debug code
+        if s_number < 1 or e_number < 1 or comma_number < number_commas:
+            return -1, string_input
+        split_input = re.split('S', string_input, 1)
+        if len(split_input) == 1:
+            return -1, string_input
+        working_string = split_input[1]
+        values = re.split(',', working_string, number_commas)
+        # remaining_string = re.split('E', values[number_commas-1], 1)
+        return values, values[number_commas][1:]
+        pass
+
+    def parse_help_ass(self, data):
+        """
+        Modified version for alternating big and little strings.
+        big: Sdata(8),E
+        little: sdata(3),e
+        :param data: Tuple (d0, d1):
+        d0 is a string to be parsed
+        d1 is the number of commas in the complete telemetry string
+        :return:
+        -1 if insufficient number of commas, S or E
+        """
+        # split the data tuple into the actual data, and the length of the data string
+        big_fail = False
+        little_fail = False
+        little_comma_count = 3
+        string_input = data[0]
+        number_commas = data[1]
+        # string_list = list(string_input)
+        big_s_number = string_input.count('S')
+        # s_locations = []
+        big_e_number = string_input.count('E')
+        s_number = string_input.count('s')
+        e_number = string_input.count('e')
+        comma_number = string_input.count(',')
+        # for char in string_input:
+        #     if char == ',':
+        #         comma_number += 1
+        #     elif char == 'S':
+        #         big_s_number += 1
+        #     elif char == 'E':
+        #         big_e_number += 1
+        #     if big_s_number >= 1 and big_e_number >= 1 and comma_number >= number_commas:
+        #         break
+        #     pass
+        # print('S: {}  E: {}  ,: {}'.format(big_s_number, big_e_number, comma_number)) # TODO: remove debug code
+        if big_s_number < 1 or big_e_number < 1 or comma_number < number_commas:
+            big_fail = True
+        if s_number < 1 or e_number < 1 or comma_number < little_comma_count:
+            little_fail = True
+        if little_fail and big_fail:
+            return -1, string_input
+        split_input_big = re.split('S', string_input, 1)
+        split_input_little = re.split('s', string_input, 1)
+        big_split_success = False if len(split_input_big) == 0 else True
+        little_split_success = False if len(split_input_little) == 0 else True
+
+        if not little_split_success and not big_split_success:
+            return -1, string_input
+
+        if len(split_input_big[0]) < len(split_input_little[0]):
+            big_if_true = True
+
+            pass
+        working_string = split_input_big[1]
+        values = re.split(',', working_string, number_commas)
+        # remaining_string = re.split('E', values[number_commas-1], 1)
+        return values, values[number_commas][1:]
+        pass
+
+    def parse_simple_split(self, data):
+        """
+
+        :param data: (d0, d1, d2)
+        d0 = data to split
+        d1 = big data length
+        d2 = small data length
+        :return:
+        """
+        string_in = data[0]
+        big_length = data[1]
+        small_length = data[2]
+        split_data = re.split(',', string_in)
+        if len(split_data) == big_length+1 or len(split_data) == small_length+1:
+            split_data[0] = split_data[0][1:]
+            split_data = split_data[0:-1]
+            # TODO: check that individual entries are valid
+            pass
+        else:
+            return -1, ''
+        try:
+            self.convert_string_list_float(split_data)
+        except:
+            return -1, ''
+        return split_data, ''
+        pass
+
+    def convert_string_list_float(self, data):
+        listout = [float(x) for x in data]
+        return listout
 
     def find_angle(self, data):
         '''calculate antenna direction given rocket coordinates and ground station coordinates'''
