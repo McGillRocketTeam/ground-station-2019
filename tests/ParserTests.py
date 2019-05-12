@@ -403,6 +403,19 @@ class ParserTester:
         print('{} \n {}'.format(s, t))
         pass
 
+    def test_serial_missingdata(self):
+        global start_time
+        start_time = round(datetime.datetime.utcnow().timestamp())
+        time.sleep(2)
+        random_data = self.generate_random_data_array()
+
+        string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
+               str(random_data[3]) + ',' + ',' + str(random_data[5]) + ',' + \
+               str(random_data[6]) + ',' + str(random_data[7]) + ',E'
+        p = self.parse_full((string, telemetry_data_length_big))
+        print(p)
+        self.data_storage.save_telemetry_data(p[1])
+
 def main():
     """
 

@@ -13,8 +13,9 @@ import math
 data format: Slat,long,alt,time,temp,vel,acc,sat,E\n
 backup GPS data: lat, long, alt, sat#
 """
-telemetry_data_length = 8  # Current length of telemetry data string
-gps_data_length = 5  # Current length of gps data string
+telemetry_data_length_big = 8  # Length of big telemetry data string
+telemetry_data_length_small = 3  # Length of small telemetry data string
+gps_data_length = 5  # Length of gps data string
 counter_gps = 0  # Counter to generate decent GPS data for test only
 ground_lat = 0  # Ground station latitude
 ground_long = 0  # Ground station longitude
@@ -28,30 +29,26 @@ class Parser:
         self.data_storage = data_storage_in
         self.plots = plots_in
 
-        # TODO Add port setup for GPS
         # TODO Automated port check setup
 
-        # self.port = "COM5"
         # ls /dev/tty.*
         # use above to find port of arduino on mac
-        # self.port = "/dev/tty.usbserial-A104IBE7"
-        self.port = "/dev/tty.usbserial-00002014"
-        # self.port = "/dev/tty.usbserial-00001014"
 
-        # self.port2 = "/dev/tty.usbmodem14101"
-        # self.baud = 9600 # 1200 bytes per second
-        self.baud = 115200
+        self.port = "/dev/tty.usbserial-00002014"
+        self.port2 = "/dev/tty.usbmodem14101"
+        self.baud = 9600
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
-        self.timeout = 3  # sec
-        # setup for telemetry serial
-        ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
-        self.serial_telemetry = ser
-        if not ser.isOpen():
-            ser.open()
-        else:
-            pass
+        self.timeout = 3
+
+        # Setup for telemetry serial
+        # ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
+        # self.serial_telemetry = ser
+        # if not ser.isOpen():
+        #     ser.open()
+        # else:
+        #     pass
 
         # Setup for gps serial
         # ser2 = serial.Serial(self.port2, self.baud, self.byte, self.parity, self.stopbits)
@@ -63,8 +60,7 @@ class Parser:
 
     def parse(self):
         """
-        Contains the main while loop is used to repeatedly parse the received data
-        :return: no return data
+        Contains the main while loop used to repeatedly parse the received data
         """
         global start_time
         start_time = round(datetime.datetime.utcnow().timestamp())
@@ -75,365 +71,117 @@ class Parser:
         loop_control = True
 
         while loop_control:
-            # time.sleep(0.5)
-            real_data = True  # Controls if data is simulated or from actual serial reader
+            real_data = False  # Controls if data is simulated or from actual serial reader
             caladan_data = False  # Controls if we want to use caladan data
             if real_data:
-                # telemetry_data += self.serial_telemetry.read_until(terminator='\n', size=55).decode('utf-8')
                 telemetry_data = self.serial_telemetry.readline().decode('utf-8')
-                # gps_data += self.serial_gps.read(size=1000).decode('utf-8')
-
-                print(telemetry_data)
-                print(gps_data)
+                # gps_data = self.serial_gps.readline().decode('utf-8')
             else:  # Fake data
                 if caladan_data:
                     self.read_from_file()
                 else:
-                    telemetry_data += self.simulate_telemetry()
-                    gps_data += self.simulate_gps()
-                    print(telemetry_data)
-                    print(gps_data)
+                    telemetry_data = self.simulate_telemetry()
+                    gps_data = self.simulate_gps()
 
             """ Save raw data to files """
             self.data_storage.save_raw_data(telemetry_data)
-            # self.data_storage.save_raw_data(gps_data)
+            self.data_storage.save_raw_data(gps_data)
 
             """ Process telemetry data """
-            # processing for full telemetry data:
-            result = self.parse_full_new_helper((telemetry_data, telemetry_data_length))
+            result = self.split_telemetry_array(telemetry_data, telemetry_data_length_big, telemetry_data_length_small)
+            self.log_parse(result)
             print(result)
-            return_data = self.process_parsed((result, (200, 300), counter_antenna, telemetry_data, True, True))
-            telemetry_data = return_data[0]
-            counter_antenna = return_data[1]
+            if result[0] == 200:  # Successfully parsed
+                self.process_parsed(result[1], counter_antenna, True)
 
             """ Process gps data """
-            # processing for gps:
-            # gps_result = self.parse_full((gps_data, gps_data_length))
-            # print('gps::')
-            # print(gps_result)
-            # return_gps_data = self.process_parsed((gps_result,(200,300),counter_antenna,gps_data,False, False))
-            # gps_data = return_gps_data[0]
+            gps_result = self.split_gps_array(gps_data, gps_data_length)
+            self.log_parse(result)
+            print(gps_result)
+            if result[0] == 200:  # Successfully parsed
+                self.process_parsed(result[1], counter_antenna, False)
 
-    def process_parsed(self, data):
+            counter_antenna += 1
+
+    def split_telemetry_array(self, data, big_length, small_length):
         """
-        errorCodeTuple: (200,300)
-        updateantenna: true if we want to update antenna values
-        full_data: true if we want to process the full data
-        :param data: (result,(errorCodesTuple), counter_antenna, telemetry_data, updateantenna, full_data
-        :return: new telemetry_data, new counter_antenna
+        :param data: datastring to split
+        :param small_length: length of small telemetry string
+        :param big_length: length of big telemetry string
+        :return:
         """
-
-        result = data[0]
-        e1 = data[1][0]
-        e2 = data[1][1]
-        counter_antenna = data[2]
-        t_data = data[3]
-        update_antenna = data[4]
-        full_data = data[5]
-        if result[0] == e1 or result[0] == e2:
-            for data_chunk in result[1]:
-                # print(data_chunk)
-                if full_data:
-                    gps_data_chunk = [data_chunk[0], data_chunk[1], data_chunk[7]]
-
-                    """ Save telemetry data"""
-                    self.data_storage.save_telemetry_data(data_chunk)
-                    self.data_storage.save_gps_data(gps_data_chunk)
-
-                    """ Plot telemetry data and update GUI """
-                    # try:
-                    #     self.plots.plot_telemetry_data(data_chunk)
-                    # except:
-                    #     print("Error plotting telemetry data")
-                    # try:
-                    #     self.plots.plot_gps_data(data_chunk)
-                    # except:
-                    #     print("Error plotting GPS data")
-                    # try:
-                    #     self.plots.update_plots()
-                    # except:
-                    #     print("Error updating plots")
-
-                    if update_antenna:
-                        counter_antenna += 1
-
-                    # if counter_antenna % 2 == 0 and update_antenna:  # Is 1000 the best number for this?
-                    #     antenna_angle = self.find_angle(gps_data_chunk)
-                    #     self.plots.antennaAngle.configure(
-                    #         text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
-
-                    if result[0] == e1:
-                        t_data = result[2]
-                    elif result[0] == e2:  # empty
-                        t_data = ''
-                else:
-                    try:
-                        self.data_storage.save_gps_data(data_chunk)
-                    except:
-                        print('Error saving parsed gps backup data')
-        else:
-            # TODO: log errors
-            pass
-        return t_data, counter_antenna
-
-    def parse_full(self, data):
-        """
-        :param data: the string of text that should be parsed in a tuple with length of datastring
-        :return: a tuple containing (status, listOfParsedData, remainingString)
-        status: status code: 200 means parse was successful
-        listOfParsedData: a list containing lists of length 8 (the telemetry data)
-        remainingString: the data that was not able to be parsed at the end of the data string
-        """
-        status = 500  # error codes or correlation id
         """
         Error Codes: 
-        500 error occured
-        200 data was successfully parsed, remainingString is non-empty
-        300 data was successfully parsed, remaining string is empty
+        500 error converting occured
+        200 data was successfully parsed
         400 no data was parsed from the string
         """
-        data_string = data[0]
-        data_length = data[1]
-        parse_helped_data = self.parse_helper((data_string, data_length))
+        split_data = re.split(',', data)
 
-        if parse_helped_data[0] == -1:
-            data_list = []
-            status = 400
-        else:
-            data_list = [parse_helped_data[0][0:data_length]]
+        if not len(split_data) == big_length + 1 and not len(split_data) == small_length + 1:  # Invalid array length
+            return 400, split_data
 
-        while len(re.split(r',', parse_helped_data[1], data_length+2)) > (data_length+1):
-            parse_helped_data = self.parse_helper((parse_helped_data[1], data_length))
-            if parse_helped_data[0] == -1:
-                break
-            data_list.append(parse_helped_data[0][0:data_length])
-            pass
-        if len(data_list) > 0:  # TODO: implement parsing logic here
-            if len(parse_helped_data) == 1:
-                return 300, data_list, ''
-            else:
-                return 200, data_list, parse_helped_data[1]
-        return status,
-
-    def parse_full_new_helper(self, data):
-        """
-        :param data: the string of text that should be parsed in a tuple with length of datastring
-        :return: a tuple containing (status, listOfParsedData, remainingString)
-        status: status code: 200 means parse was successful
-        listOfParsedData: a list containing lists of length 8 (the telemetry data)
-        remainingString: the data that was not able to be parsed at the end of the data string
-        """
-        status = 500  # error codes or correlation id
-        """
-        Error Codes: 
-        500 error occured
-        200 data was successfully parsed, remainingString is non-empty
-        300 data was successfully parsed, remaining string is empty
-        400 no data was parsed from the string
-        """
-        data_string = data[0]
-        data_length = data[1]
-        little_data_length = 3
-        parse_helped_data = self.parse_simple_split((data_string, data_length, little_data_length))
-
-
-        if parse_helped_data[0] == -1:
-            data_list = []
-            status = 400
-        else:
-            data_list = [parse_helped_data[0][0:data_length]]
-
-        while len(re.split(r',', parse_helped_data[1], data_length+2)) > (data_length+1):
-            parse_helped_data = self.parse_simple_split((parse_helped_data[1], data_length, little_data_length))
-            if parse_helped_data[0] == -1:
-                break
-            data_list.append(parse_helped_data[0][0:data_length])
-            pass
-        if len(data_list) > 0:  # TODO: implement parsing logic here
-            if len(parse_helped_data) == 1:
-                return 300, data_list, ''
-            else:
-                return 200, data_list, parse_helped_data[1]
-        return status,
-
-    def parse_full_fast(self, data):
-
-        pass
-
-    def parse_helper(self, data):
-        """
-        this function takes in a string of any length, and returns a tuple,
-        where slot 0 is the current array of separated values from one telemetry reading
-        if slot 0 contains the int -1, then there was no data to be parsed
-        slot 1 is the remaining string
-        :param data: tuple(actual_data,string_length)
-        actual_data is the string to be parsed
-        string_length is the number of values separated by commas in the string
-        :return: tuple(array, string)
-        array is the list of values that were separated by commas in the input string
-        string is the remaining string that was not able to be parsed
-        """
-        # split the data tuple into the actual data, and the length of the data string
-        actual_data = data[0]
-        string_length = data[1]
-        # Takes the first set of data from the data string, or removes the garbage from the front of it
-        split_data = re.split(r"S", actual_data, 1)
-        remaining_data = ''
-        if len(split_data) == 2:
-            remaining_data = split_data[1]
-        else:
-            split_try = re.split(r",", split_data[0])
-            if len(split_try) == (string_length+1):
-                return split_try, ""
-            else:
-                return -1, split_data[0]
-        parsed = re.split(r",", split_data[0])
-        while len(parsed) != (string_length+1):
-            split_data = re.split(r"S", remaining_data, 1)
-            parsed = re.split(r",", split_data[0])
-            if len(split_data) == 1:
-                # remaining_data = ''
-                return (-1, remaining_data)
-                # if len(splitData) != (stringLength+1):
-                #     return (-1, remaining_data)
-                # else:
-                #     return (parsed,remaining_data)
-                # return ([],actualData)
-            else:
-                remaining_data = split_data[1]
-            #TODO: fix: infinite loop when string ends with partial data piece
-
-            # if len(re.split(r',',remaining_data)) < 12:
-            #     break
-            # print(parsed)
-            # print(remaining_data)
-        return parsed, remaining_data
-
-    def parse_help_fast(self, data):
-        '''
-
-        :param data: Tuple (d0, d1):
-        d0 is a string to be parsed
-        d1 is the number of commas in the complete telemetry string
-        :return:
-        -1 if insufficient number of commas, S or E
-
-        '''
-        # split the data tuple into the actual data, and the length of the data string
-        string_input = data[0]
-        number_commas = data[1]
-        # string_list = list(string_input)
-        s_number = string_input.count('S')
-        # s_locations = []
-        e_number = string_input.count('E')
-        comma_number = string_input.count(',')
-        # for char in string_input:
-        #     if char == ',':
-        #         comma_number += 1
-        #     elif char == 'S':
-        #         s_number += 1
-        #     elif char == 'E':
-        #         e_number += 1
-        #     if s_number >= 1 and e_number >= 1 and comma_number >= number_commas:
-        #         break
-        #     pass
-        # print('S: {}  E: {}  ,: {}'.format(s_number, e_number, comma_number)) # TODO: remove debug code
-        if s_number < 1 or e_number < 1 or comma_number < number_commas:
-            return -1, string_input
-        split_input = re.split('S', string_input, 1)
-        if len(split_input) == 1:
-            return -1, string_input
-        working_string = split_input[1]
-        values = re.split(',', working_string, number_commas)
-        # remaining_string = re.split('E', values[number_commas-1], 1)
-        return values, values[number_commas][1:]
-        pass
-
-    def parse_help_ass(self, data):
-        """
-        Modified version for alternating big and little strings.
-        big: Sdata(8),E
-        little: sdata(3),e
-        :param data: Tuple (d0, d1):
-        d0 is a string to be parsed
-        d1 is the number of commas in the complete telemetry string
-        :return:
-        -1 if insufficient number of commas, S or E
-        """
-        # split the data tuple into the actual data, and the length of the data string
-        big_fail = False
-        little_fail = False
-        little_comma_count = 3
-        string_input = data[0]
-        number_commas = data[1]
-        # string_list = list(string_input)
-        big_s_number = string_input.count('S')
-        # s_locations = []
-        big_e_number = string_input.count('E')
-        s_number = string_input.count('s')
-        e_number = string_input.count('e')
-        comma_number = string_input.count(',')
-        # for char in string_input:
-        #     if char == ',':
-        #         comma_number += 1
-        #     elif char == 'S':
-        #         big_s_number += 1
-        #     elif char == 'E':
-        #         big_e_number += 1
-        #     if big_s_number >= 1 and big_e_number >= 1 and comma_number >= number_commas:
-        #         break
-        #     pass
-        # print('S: {}  E: {}  ,: {}'.format(big_s_number, big_e_number, comma_number)) # TODO: remove debug code
-        if big_s_number < 1 or big_e_number < 1 or comma_number < number_commas:
-            big_fail = True
-        if s_number < 1 or e_number < 1 or comma_number < little_comma_count:
-            little_fail = True
-        if little_fail and big_fail:
-            return -1, string_input
-        split_input_big = re.split('S', string_input, 1)
-        split_input_little = re.split('s', string_input, 1)
-        big_split_success = False if len(split_input_big) == 0 else True
-        little_split_success = False if len(split_input_little) == 0 else True
-
-        if not little_split_success and not big_split_success:
-            return -1, string_input
-
-        if len(split_input_big[0]) < len(split_input_little[0]):
-            big_if_true = True
-
-            pass
-        working_string = split_input_big[1]
-        values = re.split(',', working_string, number_commas)
-        # remaining_string = re.split('E', values[number_commas-1], 1)
-        return values, values[number_commas][1:]
-        pass
-
-    def parse_simple_split(self, data):
-        """
-
-        :param data: (d0, d1, d2)
-        d0 = data to split
-        d1 = big data length
-        d2 = small data length
-        :return:
-        """
-        string_in = data[0]
-        big_length = data[1]
-        small_length = data[2]
-        split_data = re.split(',', string_in)
-        if len(split_data) == big_length+1 or len(split_data) == small_length+1:
-            split_data[0] = split_data[0][1:]
-            split_data = split_data[0:-1]
-            # TODO: check that individual entries are valid
-            pass
-        else:
-            return -1, ''
+        split_data[0] = split_data[0][1:]  # Remove S from datastring
+        split_data = split_data[0:-1]  # Remove E from datastring
         try:
-            self.convert_string_list_float(split_data)
+            self.convert_string_list_float(split_data)  # Try converting to values to float right away to catch errors
+            return 200, split_data
         except:
-            return -1, ''
-        return split_data, ''
-        pass
+            return 500, split_data
+
+    def split_gps_array(self, data, gps_length):
+        """
+        :param data: datastring to split
+        :param gps_length: length of gps redundancy string
+        :return:
+        """
+        """
+        Error Codes: 
+        500 error converting occured
+        200 data was successfully parsed
+        400 no data was parsed from the string
+        """
+        split_data = re.split(',', data)
+
+        if not len(split_data) == gps_length + 1:  # Invalid array length
+            return 400, split_data
+
+        split_data[0] = split_data[0][1:]  # Remove S from datastring
+        split_data = split_data[0:-1]  # Remove E from datastring
+        try:
+            self.convert_string_list_float(split_data)  # Try converting to values to float right away to catch errors
+            return 200, split_data
+        except:
+            return 500, split_data
+
+    def process_parsed(self, data, counter_antenna, is_telemetry):
+        """
+        :param data: parsed flight data
+        :param counter_antenna: current counter for antenna updating
+        :param is_telemetry: indicates if dealing with telemetry string, or with gps redundancy string
+        """
+        """ Save and plot data"""
+        if is_telemetry:
+            self.data_storage.save_telemetry_data(data)
+            try:
+                self.plots.plot_telemetry_data(data)
+            except:
+                print("Error plotting telemetry data")
+        else:
+            self.data_storage.save_gps_data(data)
+            try:
+                self.plots.plot_gps_data(data)
+            except:
+                print("Error plotting GPS data")
+        try:
+            self.plots.update_plots()
+        except:
+            print("Error updating plots")
+
+        # if counter_antenna % 2 == 0:  # Is 1000 the best number for this?
+        #     antenna_angle = self.find_angle(gps_data_chunk)
+        #     self.plots.antennaAngle.configure(
+        #         text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
 
     def convert_string_list_float(self, data):
         listout = [float(x) for x in data]
@@ -506,7 +254,7 @@ class Parser:
 
         return 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
                str(random_data[3]) + ',' + str(random_data[4]) + ',' + str(random_data[5]) + ',' + \
-               str(random_data[6]) + ',' + str(random_data[7]) + ',E'
+               str(random_data[6]) + ',' + str(random_data[7]) + ',E\n'
 
     def simulate_gps(self):
         """
@@ -515,7 +263,7 @@ class Parser:
         random_data = self.generate_random_data_array()
 
         string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
-                 str(random_data[3]) + ',' + str(random_data[4]) + ',E'
+                 str(random_data[3]) + ',' + str(random_data[4]) + ',E\n'
         return string
 
     def generate_random_data_array(self):
@@ -574,23 +322,10 @@ class Parser:
 
         file.close()
 
-    def test_serial_missingdata(self):
-        global start_time
-        start_time = round(datetime.datetime.utcnow().timestamp())
-        time.sleep(2)
-        random_data = self.generate_random_data_array()
-
-        string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
-               str(random_data[3]) + ',' + ',' + str(random_data[5]) + ',' + \
-               str(random_data[6]) + ',' + str(random_data[7]) + ',E'
-        p = self.parse_full((string, telemetry_data_length))
-        print(p)
-        self.data_storage.save_telemetry_data(p[1])
-
     def log_parse(self, data):
-        print(data, file=open("../storage/parselog.txt", "a"))
         # f = open("../storage/parselog.txt", "a")
-        # f.write(data)
+        # f.write(data[0])
+        # f.write(data[1])
         # f.close()
         pass
 
