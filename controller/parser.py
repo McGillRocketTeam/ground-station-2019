@@ -10,10 +10,11 @@ import datetime
 import math
 
 """
-data format: Slat,long,alt,time,temp,vel,acc,sat,E\n
+telemetry short data format: Slat,long,time,E\n
+telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,rssi,E\n
 backup GPS data: lat, long, alt, sat#
 """
-telemetry_data_length_big = 8  # Length of big telemetry data string
+telemetry_data_length_big = 10  # Length of big telemetry data string
 telemetry_data_length_small = 3  # Length of small telemetry data string
 gps_data_length = 5  # Length of gps data string
 counter_gps = 0  # Counter to generate decent GPS data for test only
@@ -254,7 +255,8 @@ class Parser:
 
         return 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
                str(random_data[3]) + ',' + str(random_data[4]) + ',' + str(random_data[5]) + ',' + \
-               str(random_data[6]) + ',' + str(random_data[7]) + ',E\n'
+               str(random_data[6]) + ',' + str(random_data[7]) + ',' + str(random_data[8]) +\
+               ',' + str(random_data[9]) + ',E\n'
 
     def simulate_gps(self):
         """
@@ -286,12 +288,13 @@ class Parser:
         alt = randint(min_random, max_random) + random.random()
         temp = randint(-100, max_random) + random.random()
         vel = randint(min_random, max_random) + random.random()
+        gyro_x = randint(min_random, max_random) + random.random()
         acc = randint(min_random, max_random) + random.random()
         sat = randint(min_random, max_random) + random.random()
+        rssi = randint(min_random, max_random) + random.random()
         global start_time
         current_time = round(datetime.datetime.utcnow().timestamp()) - start_time
-
-        return [lat, long, alt, current_time, temp, vel, acc, sat]
+        return [lat, long, current_time, alt, vel, sat, acc, temp, gyro_x, rssi]
 
     def read_from_file(self):
         """ Read from caladan sim test file """

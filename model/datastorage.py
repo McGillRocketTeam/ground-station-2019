@@ -29,7 +29,7 @@ class DataStorage:
         self.telemetry_file_name = cur_time + "_data_telemetry.csv"
         with open('../storage/telemetry/' + self.telemetry_file_name, 'w+') as csvfile_telemetry:
             file_writer = csv.writer(csvfile_telemetry, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            file_writer.writerow(['Current Time', 'Latitude', 'Longitude', 'Altitude', 'Time', 'Temperature', 'Velocity', 'Acceleration', 'Satelites'])
+            file_writer.writerow(['Current Time', 'Latitude', 'Longitude', 'Time', 'Altitude', 'Velocity', 'Satelites', 'Acceleration', 'Temperature', 'GyroX', 'RSSI'])
             csvfile_telemetry.close()
 
         self.gps_file_name = cur_time + "_data_gps.csv"
@@ -48,8 +48,8 @@ class DataStorage:
         """ Appends new telemetry data to end of the file """
         with open('../storage/telemetry/' + self.telemetry_file_name, "a+") as csvfile_telemetry:
             file_writer = csv.writer(csvfile_telemetry, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            if len(data) == 8:  # TODO: Consider scenarios where the input data is different
-                file_writer.writerow([time.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]])  # This is the current format for saving the telemetry data
+            if len(data) == 10:  # TODO: Consider scenarios where the input data is different
+                file_writer.writerow([time.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8]])  # This is the current format for saving the telemetry data
             csvfile_telemetry.close()
 
     def save_gps_data(self, data):
@@ -82,18 +82,3 @@ class DataStorage:
                 rawData.write(s)
                 rawData.write("\n\n")
                 rawData.close()
-
-
- # For testing purposes only:
-if __name__ == '__main__':
-    storage = DataStorage()
-    list1 = ["Time1", "Temp1", "Alt1", "Vel1", "Acc1"]
-    listdata = ["2", "20", "30", "40", "78"]
-    storage.save_telemetry_data(list1)
-    storage.save_telemetry_data(listdata)
-    storage.save_raw_data(("neco", "neco", "zaseneco"))
-    storage.save_raw_data(None)
-    storage.save_raw_data("thisisa string")
-    storage.save_raw_data(listdata)
-
-
