@@ -14,7 +14,9 @@
 
 6. On the same page, find the little '+' button on the right of the popup window. 
 
-7. Search for pyserial, matplotlib, and utm and install them
+7. Search for pyserial, matplotlib (TBD), utm, pyqt5, qdarkstyle, pyqtgraph and install them
+
+8. Run program through parser.py
 
 
 
