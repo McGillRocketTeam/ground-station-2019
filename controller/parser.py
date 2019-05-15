@@ -1,13 +1,18 @@
 import time
+import sys
 
 import model.datastorage as data_storage
-import views.plots as plots
+import view as view
+import qdarkstyle
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication
 import serial
 from random import randint
 import random
 import re
 import datetime
 import math
+from guiLoop import guiLoop
 
 """
 telemetry short data format: Slat,long,time,E\n
@@ -59,6 +64,7 @@ class Parser:
         # else:
         #     pass
 
+    @guiLoop
     def parse(self):
         """
         Contains the main while loop used to repeatedly parse the received data
@@ -103,6 +109,7 @@ class Parser:
                 self.process_parsed(result[1], counter_antenna, False)
 
             counter_antenna += 1
+            yield 0.05
 
     def split_telemetry_array(self, data, big_length, small_length):
         """
@@ -335,9 +342,14 @@ class Parser:
 
 def main():
     data_store = data_storage.DataStorage()
-    plots_instance = plots.Plots()
+    app = QApplication(sys.argv)
+    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+    plots_instance = view.view()
+
     parser = Parser(data_store, plots_instance)
     parser.parse()
+
+    sys.exit(app.exec_())
 
 
 if __name__ == "__main__":

@@ -97,10 +97,10 @@ class view(QWidget):
 
     def plot_telemetry_data(self, telemetry_data):
         """ Append telemetry data to lists """
-        self.time_list.append(float(telemetry_data[3]))
-        self.temperature_list.append(float(telemetry_data[4]))
-        self.altitude_list.append(float(telemetry_data[2]))
-        self.velocity_list.append(float(telemetry_data[5]))
+        self.time_list.append(float(telemetry_data[2]))
+        self.temperature_list.append(float(telemetry_data[7]))
+        self.altitude_list.append(float(telemetry_data[3]))
+        self.velocity_list.append(float(telemetry_data[4]))
         self.acceleration_list.append(float(telemetry_data[6]))
 
         self.altitude_graph.plot(self.time_list, self.altitude_list, pen='r')
