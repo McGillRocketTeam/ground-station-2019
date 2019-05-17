@@ -15,16 +15,17 @@ import math
 from guiLoop import guiLoop
 
 """
-telemetry short data format: Slat,long,time,E\n
-telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,rssi,E\n
-backup GPS data: lat, long, alt, sat#
+telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,E\n
+backup GPS data: Slat,long,time,gps_alt,gps_speed,satE\n
 """
-telemetry_data_length_big = 10  # Length of big telemetry data string
-telemetry_data_length_small = 3  # Length of small telemetry data string
-gps_data_length = 5  # Length of gps data string
+telemetry_data_length = 9  # Length of big telemetry data string
+gps_data_length = 6  # Length of gps data string
+
+tel_time = 0
+
 counter_gps = 0  # Counter to generate decent GPS data for test only
-ground_lat = 0  # Ground station latitude
-ground_long = 0  # Ground station longitude
+ground_lat = 45.45  # Ground station latitude
+ground_long = -73.73  # Ground station longitude
 ground_alt = 0  # Ground station altitude
 
 
@@ -40,15 +41,16 @@ class Parser:
         # ls /dev/tty.*
         # use above to find port of arduino on mac
 
-        self.port = "/dev/tty.usbserial-00002014"
-        self.port2 = "/dev/tty.usbmodem14101"
+        self.port = "COM11"
+        self.port2 = "COM10"
+        self.port3 = "COM5"
         self.baud = 9600
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
         self.timeout = 3
 
-        # Setup for telemetry serial
+        # # Setup for telemetry serial
         # ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
         # self.serial_telemetry = ser
         # if not ser.isOpen():
@@ -64,6 +66,15 @@ class Parser:
         # else:
         #     pass
 
+        # Setup for RSSI serial
+        # ser3 = serial.Serial(
+        # ser3 = serial.Serial(self.port3, self.baud, self.byte)
+        # self.serial_rssi = ser3
+        # if not ser3.isOpen():
+        #     ser3.open()
+        # else:
+        #     pass
+
     @guiLoop
     def parse(self):
         """
@@ -74,48 +85,50 @@ class Parser:
 
         telemetry_data = ''
         gps_data = ''
+        rssi_data = ''
         counter_antenna = 0
         loop_control = True
 
         while loop_control:
             real_data = False  # Controls if data is simulated or from actual serial reader
-            caladan_data = False  # Controls if we want to use caladan data
+            replot_data = False  # Controls if we want to use caladan data
             if real_data:
                 telemetry_data = self.serial_telemetry.readline().decode('utf-8')
-                # gps_data = self.serial_gps.readline().decode('utf-8')
+                gps_data = self.serial_gps.readline().decode('utf-8')
+                rssi_data = self.serial_rssi.readline().decode('utf-8')
             else:  # Fake data
-                if caladan_data:
+                if replot_data:
                     self.read_from_file()
                 else:
                     telemetry_data = self.simulate_telemetry()
                     gps_data = self.simulate_gps()
+                    rssi_data = -12
 
             """ Save raw data to files """
-            self.data_storage.save_raw_data(telemetry_data)
-            self.data_storage.save_raw_data(gps_data)
+            self.data_storage.save_raw_telemetry_data(telemetry_data, rssi_data)
+            self.data_storage.save_raw_gps_data(gps_data)
 
             """ Process telemetry data """
-            result = self.split_telemetry_array(telemetry_data, telemetry_data_length_big, telemetry_data_length_small)
-            self.log_parse(result)
+            result = self.split_array(telemetry_data, telemetry_data_length)
+            # self.log_parse(result)
             print(result)
             if result[0] == 200:  # Successfully parsed
                 self.process_parsed(result[1], counter_antenna, True)
 
             """ Process gps data """
-            gps_result = self.split_gps_array(gps_data, gps_data_length)
-            self.log_parse(result)
+            gps_result = self.split_array(gps_data, gps_data_length)
+            # self.log_parse(result)
             print(gps_result)
             if result[0] == 200:  # Successfully parsed
                 self.process_parsed(result[1], counter_antenna, False)
 
             counter_antenna += 1
-            yield 0.05
+            # yield 0.05
 
-    def split_telemetry_array(self, data, big_length, small_length):
+    def split_array(self, data, string_length):
         """
         :param data: datastring to split
-        :param small_length: length of small telemetry string
-        :param big_length: length of big telemetry string
+        :param string_length: length of string (telemetry or gps)
         :return:
         """
         """
@@ -126,32 +139,7 @@ class Parser:
         """
         split_data = re.split(',', data)
 
-        if not len(split_data) == big_length + 1 and not len(split_data) == small_length + 1:  # Invalid array length
-            return 400, split_data
-
-        split_data[0] = split_data[0][1:]  # Remove S from datastring
-        split_data = split_data[0:-1]  # Remove E from datastring
-        try:
-            self.convert_string_list_float(split_data)  # Try converting to values to float right away to catch errors
-            return 200, split_data
-        except:
-            return 500, split_data
-
-    def split_gps_array(self, data, gps_length):
-        """
-        :param data: datastring to split
-        :param gps_length: length of gps redundancy string
-        :return:
-        """
-        """
-        Error Codes: 
-        500 error converting occured
-        200 data was successfully parsed
-        400 no data was parsed from the string
-        """
-        split_data = re.split(',', data)
-
-        if not len(split_data) == gps_length + 1:  # Invalid array length
+        if not len(split_data) == string_length + 1:  # Invalid array length
             return 400, split_data
 
         split_data[0] = split_data[0][1:]  # Remove S from datastring
@@ -175,6 +163,16 @@ class Parser:
                 self.plots.plot_telemetry_data(data)
             except:
                 print("Error plotting telemetry data")
+
+            if counter_antenna % 40 == 0:  # Is 1000 the best number for this?
+                try:
+                    antenna_angle = self.find_angle(data)
+                    print(str(antenna_angle) + '\n')
+                    self.data_storage.save_antenna_angles(antenna_angle, data[2])
+                    # self.plots.antennaAngle.configure(
+                    #    text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
+                except:
+                    print("Error calculating antenna angle")
         else:
             self.data_storage.save_gps_data(data)
             try:
@@ -185,11 +183,6 @@ class Parser:
             self.plots.update_plots()
         except:
             print("Error updating plots")
-
-        # if counter_antenna % 2 == 0:  # Is 1000 the best number for this?
-        #     antenna_angle = self.find_angle(gps_data_chunk)
-        #     self.plots.antennaAngle.configure(
-        #         text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
 
     def convert_string_list_float(self, data):
         listout = [float(x) for x in data]
@@ -203,7 +196,7 @@ class Parser:
         ground_y = ground_long
         rocket_x = float(data[0])
         rocket_y = float(data[1])
-        rocket_alt = float(data[2])
+        rocket_alt = float(data[3])
         # Covert to decimal degrees
         '''rocket_x = self.convert_DMS_to_DD(rocket_x)
         rocket_y = self.convert_DMS_to_DD(rocket_y)
@@ -263,7 +256,7 @@ class Parser:
         return 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
                str(random_data[3]) + ',' + str(random_data[4]) + ',' + str(random_data[5]) + ',' + \
                str(random_data[6]) + ',' + str(random_data[7]) + ',' + str(random_data[8]) +\
-               ',' + str(random_data[9]) + ',E\n'
+               ',E\n'
 
     def simulate_gps(self):
         """
@@ -272,7 +265,7 @@ class Parser:
         random_data = self.generate_random_data_array()
 
         string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
-                 str(random_data[3]) + ',' + str(random_data[4]) + ',E\n'
+                 str(random_data[3]) + ',' + str(random_data[4]) + ',' + str(random_data[5]) + ',E\n'
         return string
 
     def generate_random_data_array(self):
@@ -298,10 +291,9 @@ class Parser:
         gyro_x = randint(min_random, max_random) + random.random()
         acc = randint(min_random, max_random) + random.random()
         sat = randint(min_random, max_random) + random.random()
-        rssi = randint(min_random, max_random) + random.random()
         global start_time
         current_time = round(datetime.datetime.utcnow().timestamp()) - start_time
-        return [lat, long, current_time, alt, vel, sat, acc, temp, gyro_x, rssi]
+        return [lat, long, current_time, alt, vel, sat, acc, temp, gyro_x]
 
     def read_from_file(self):
         """ Read from caladan sim test file """
