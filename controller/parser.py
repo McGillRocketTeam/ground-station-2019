@@ -39,39 +39,39 @@ class Parser:
         # ls /dev/tty.*
         # use above to find port of arduino on mac
 
-        self.port = "COM11"
-        self.port2 = "COM10"
-        self.port3 = "COM5"
-        self.baud = 9600
+        self.port = "COM10"
+        self.port2 = "COM5"
+        self.port3 = "COM12"
+        self.baud = 19200
+        self.baud2 = 9600
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
-        self.timeout = 3
+        self.timeout = 0.2
 
         # # Setup for telemetry serial
-        # ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
-        # self.serial_telemetry = ser
-        # if not ser.isOpen():
-        #     ser.open()
-        # else:
-        #     pass
+        ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits, self.timeout)
+        self.serial_telemetry = ser
+        if not ser.isOpen():
+            ser.open()
+        else:
+            pass
 
         # Setup for gps serial
-        # ser2 = serial.Serial(self.port2, self.baud, self.byte, self.parity, self.stopbits)
-        # self.serial_gps = ser2
-        # if not ser2.isOpen():
-        #     ser2.open()
-        # else:
-        #     pass
+        ser2 = serial.Serial(self.port2, self.baud, self.byte, self.parity, self.stopbits, self.timeout)
+        self.serial_gps = ser2
+        if not ser2.isOpen():
+            ser2.open()
+        else:
+            pass
 
         # Setup for RSSI serial
-        # ser3 = serial.Serial(
-        # ser3 = serial.Serial(self.port3, self.baud, self.byte)
-        # self.serial_rssi = ser3
-        # if not ser3.isOpen():
-        #     ser3.open()
-        # else:
-        #     pass
+        ser3 = serial.Serial(self.port3, self.baud2, self.byte, self.parity, self.stopbits, self.timeout)
+        self.serial_rssi = ser3
+        if not ser3.isOpen():
+            ser3.open()
+        else:
+            pass
 
     @guiLoop
     def parse(self):
@@ -88,12 +88,16 @@ class Parser:
         loop_control = True
 
         while loop_control:
-            real_data = False  # Controls if data is simulated or from actual serial reader
-            replot_data = True  # Controls if we want to use caladan data
+            real_data = True  # Controls if data is simulated or from actual serial reader
+            replot_data = False  # Controls if we want to use caladan data
             if real_data:
-                telemetry_data = self.serial_telemetry.readline().decode('utf-8')
-                gps_data = self.serial_gps.readline().decode('utf-8')
-                rssi_data = self.serial_rssi.readline().decode('utf-8')
+                try:
+                    telemetry_data = self.serial_telemetry.readline().decode('utf-8')
+                    gps_data = self.serial_gps.readline().decode('utf-8')
+                    rssi_data = self.serial_rssi.readline().decode('utf-8')
+                    print(rssi_data)
+                except:
+                    continue
             else:  # Fake data
                 if replot_data:
                     self.replot_flight()
@@ -122,7 +126,7 @@ class Parser:
                 self.process_parsed(gps_result[1], counter_antenna, False)
 
             counter_antenna += 1
-            yield 0.05
+            # yield 0.05
 
     def split_array(self, data, string_length):
         """
@@ -158,10 +162,10 @@ class Parser:
         """ Save and plot data"""
         if is_telemetry:
             self.data_storage.save_telemetry_data(data)
-            try:
-                self.plots.plot_telemetry_data(data)
-            except:
-                print("Error plotting telemetry data")
+            # try:
+            #     self.plots.plot_telemetry_data(data)
+            # except:
+            #     print("Error plotting telemetry data")
 
             if counter_antenna % 40 == 0:  # Is 1000 the best number for this?
                 try:
@@ -189,7 +193,7 @@ class Parser:
 
     def replot_flight(self):
         """ Read from a previous flight """
-        file = open("../storage/telemetry/2019-05-16-21-21-44_data_telemetry.csv", "r")  # Open data file for plotting
+        file = open("../storage/telemetry/2019-05-07-20-06-29_data_telemetry.csv", "r")  # Open data file for plotting
         pull_data = file.read()
         data_list = pull_data.split('\n')
         first_line = True
@@ -197,8 +201,10 @@ class Parser:
             if first_line:
                 first_line = False  # Don't read data if first line, since it is the header
             elif len(eachLine) > 1:
-                saved_time, lat, long, time, alt, vel, sat, acc, temp, gyro_x = eachLine.split(',')  # Split each line by comma
-                telemetry_data = [lat, long, time, alt, vel, sat, acc, temp, gyro_x]
+                #saved_time, lat, long, time, alt, vel, sat, acc, temp, gyro_x = eachLine.split(',')  # Split each line by comma
+                saved_time, lat, long, alt, time, temp, vel, acc, sat = eachLine.split(',')
+                #telemetry_data = [lat, long, time, alt, vel, sat, acc, temp, gyro_x]
+                telemetry_data = [lat, long, time, alt, vel, sat, acc, temp, temp]
                 try:
                     self.plots.plot_telemetry_data(telemetry_data)
                 except:
