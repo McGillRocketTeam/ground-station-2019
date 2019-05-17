@@ -21,8 +21,6 @@ backup GPS data: Slat,long,time,gps_alt,gps_speed,satE\n
 telemetry_data_length = 9  # Length of big telemetry data string
 gps_data_length = 6  # Length of gps data string
 
-tel_time = 0
-
 counter_gps = 0  # Counter to generate decent GPS data for test only
 ground_lat = 45.45  # Ground station latitude
 ground_long = -73.73  # Ground station longitude
@@ -91,14 +89,15 @@ class Parser:
 
         while loop_control:
             real_data = False  # Controls if data is simulated or from actual serial reader
-            replot_data = False  # Controls if we want to use caladan data
+            replot_data = True  # Controls if we want to use caladan data
             if real_data:
                 telemetry_data = self.serial_telemetry.readline().decode('utf-8')
                 gps_data = self.serial_gps.readline().decode('utf-8')
                 rssi_data = self.serial_rssi.readline().decode('utf-8')
             else:  # Fake data
                 if replot_data:
-                    self.read_from_file()
+                    self.replot_flight()
+                    break
                 else:
                     telemetry_data = self.simulate_telemetry()
                     gps_data = self.simulate_gps()
@@ -117,13 +116,13 @@ class Parser:
 
             """ Process gps data """
             gps_result = self.split_array(gps_data, gps_data_length)
-            # self.log_parse(result)
+            # self.log_parse(gps_result)
             print(gps_result)
             if gps_result[0] == 200:  # Successfully parsed
                 self.process_parsed(gps_result[1], counter_antenna, False)
 
             counter_antenna += 1
-            # yield 0.05
+            yield 0.05
 
     def split_array(self, data, string_length):
         """
@@ -187,6 +186,25 @@ class Parser:
     def convert_string_list_float(self, data):
         listout = [float(x) for x in data]
         return listout
+
+    def replot_flight(self):
+        """ Read from a previous flight """
+        file = open("../storage/telemetry/2019-05-16-21-21-44_data_telemetry.csv", "r")  # Open data file for plotting
+        pull_data = file.read()
+        data_list = pull_data.split('\n')
+        first_line = True
+        for eachLine in data_list:
+            if first_line:
+                first_line = False  # Don't read data if first line, since it is the header
+            elif len(eachLine) > 1:
+                saved_time, lat, long, time, alt, vel, sat, acc, temp, gyro_x = eachLine.split(',')  # Split each line by comma
+                telemetry_data = [lat, long, time, alt, vel, sat, acc, temp, gyro_x]
+                try:
+                    self.plots.plot_telemetry_data(telemetry_data)
+                except:
+                    print("Error plotting telemetry data")
+                #yield 0.05
+        file.close()
 
     def find_angle(self, data):
         '''calculate antenna direction given rocket coordinates and ground station coordinates'''
@@ -294,24 +312,6 @@ class Parser:
         global start_time
         current_time = round(datetime.datetime.utcnow().timestamp()) - start_time
         return [lat, long, current_time, alt, vel, sat, acc, temp, gyro_x]
-
-    def read_from_file(self):
-        """ Read from a previous flight """
-        file = open("../storage/telemetry/2019-05-11-22-32-30_data_telemetry.csv", "r")  # Open data file for plotting
-        pull_data = file.read()
-        data_list = pull_data.split('\n')
-        first_line = True
-        for eachLine in data_list:
-            if first_line:
-                first_line = False  # Don't read data if first line, since it is the header
-            elif len(eachLine) > 1:
-                saved_time, lat, long, time, alt, vel, sat, acc, temp, gyro_x = eachLine.split(',')  # Split each line by comma
-                telemetry_data = [lat, long, time, alt, vel, sat, acc, temp, gyro_x]
-                try:
-                    self.plots.plot_telemetry_data(telemetry_data)
-                except:
-                    print("Error plotting telemetry data")
-        file.close()
 
     def log_parse(self, data):
         # f = open("../storage/parselog.txt", "a")
