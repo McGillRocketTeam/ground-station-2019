@@ -119,8 +119,8 @@ class Parser:
             gps_result = self.split_array(gps_data, gps_data_length)
             # self.log_parse(result)
             print(gps_result)
-            if result[0] == 200:  # Successfully parsed
-                self.process_parsed(result[1], counter_antenna, False)
+            if gps_result[0] == 200:  # Successfully parsed
+                self.process_parsed(gps_result[1], counter_antenna, False)
 
             counter_antenna += 1
             # yield 0.05
@@ -296,8 +296,8 @@ class Parser:
         return [lat, long, current_time, alt, vel, sat, acc, temp, gyro_x]
 
     def read_from_file(self):
-        """ Read from caladan sim test file """
-        file = open("../tests/CaladanSimData/CALADAN_DATA_GROUND_STATION.csv", "r")  # Open data file for plotting
+        """ Read from a previous flight """
+        file = open("../storage/telemetry/2019-05-11-22-32-30_data_telemetry.csv", "r")  # Open data file for plotting
         pull_data = file.read()
         data_list = pull_data.split('\n')
         first_line = True
@@ -305,23 +305,12 @@ class Parser:
             if first_line:
                 first_line = False  # Don't read data if first line, since it is the header
             elif len(eachLine) > 1:
-                lat, long, alt, time, temperature, altitude, velocity, acceleration, sat, vv, va, m, t, a = eachLine.split(
-                    ',')  # Split each line by comma
-                telemetry_data = [lat, long, alt, time, temperature, altitude, velocity, acceleration, sat]
-                data_gps = [lat, long, sat]
+                saved_time, lat, long, time, alt, vel, sat, acc, temp, gyro_x = eachLine.split(',')  # Split each line by comma
+                telemetry_data = [lat, long, time, alt, vel, sat, acc, temp, gyro_x]
                 try:
                     self.plots.plot_telemetry_data(telemetry_data)
                 except:
                     print("Error plotting telemetry data")
-                try:
-                    self.plots.plot_gps_data(data_gps)
-                except:
-                    print("Error plotting gps data")
-                try:
-                    self.plots.update_plots()
-                except:
-                    print("Error updating plots")
-
         file.close()
 
     def log_parse(self, data):

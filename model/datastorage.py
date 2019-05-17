@@ -32,13 +32,13 @@ class DataStorage:
         self.telemetry_file_name = cur_time + "_data_telemetry.csv"
         with open('../storage/telemetry/' + self.telemetry_file_name, 'w+') as csvfile_telemetry:
             file_writer = csv.writer(csvfile_telemetry, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            file_writer.writerow(['Current Time', 'Latitude', 'Longitude', 'Time', 'Altitude', 'Velocity', 'Satelites', 'Acceleration', 'Temperature', 'GyroX', 'RSSI'])
+            file_writer.writerow(['Current Time', 'Latitude', 'Longitude', 'Time', 'Altitude', 'Velocity', 'Satelites', 'Acceleration', 'Temperature', 'GyroX'])
             csvfile_telemetry.close()
 
         self.gps_file_name = cur_time + "_data_gps.csv"
         with open('../storage/gps/' + self.gps_file_name, 'w+') as csvfile_gps:
             file_writer = csv.writer(csvfile_gps, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            file_writer.writerow(['Current Time', 'Latitude', 'Longitude', 'Number of Satellites', 'Altitude'])
+            file_writer.writerow(['Current Time', 'Latitude', 'Longitude', 'Time', 'GPS_Altitude', 'GPS_Speed', 'Number of Satellites'])
             csvfile_gps.close()
 
         self.raw_telemetry_file_name = cur_time + "_raw_data.txt"
@@ -71,8 +71,8 @@ class DataStorage:
         """ Appends new GPS data to end of the file """
         with open('../storage/gps/' + self.gps_file_name, "a+") as csvfile_gps:
             file_writer = csv.writer(csvfile_gps, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            if len(data) == 5:  # TODO: Consider scenarios where the input data is different
-                file_writer.writerow([time.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4]])
+            if len(data) == 6:  # TODO: Consider scenarios where the input data is different
+                file_writer.writerow([time.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4], data[5]])
             csvfile_gps.close()
 
     def save_raw_telemetry_data(self, data, rssi):
