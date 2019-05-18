@@ -1,17 +1,33 @@
 import sys
 from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QLabel, QGridLayout)
 from PyQt5.QtGui import QPixmap
-from pyqtgraph.Qt import QtCore
+from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer
 import pyqtgraph as pg
 import qdarkstyle
 import utm
 import numpy as np
+from controller import parser
+from model import datastorage
 
 class view(QWidget):
+
     def __init__(self):
         super().__init__()
-        self.initUI()
 
+
+        self.data_storage = datastorage.DataStorage()
+        self.parser = parser.Parser(self.data_storage)
+        self.thread = QThread()
+
+        self.parser.dataChanged.connect(self.plot_gps_data)
+        self.parser.moveToThread(self.thread)
+        self.initUI()
+        self.thread.started.connect(self.parser.parse)
+        self.thread.start()
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.plot_test)
+        self.timer.start(5000)
     def initUI(self):
 
         """Declare layouts"""
@@ -25,7 +41,7 @@ class view(QWidget):
 
         """Declare widgets"""
 
-        self.altitude_graph = pg.PlotWidget(title='Altitude', left='Height', bottom='Time', right='')
+        self.altitude_graph = pg.PlotWidget(title='Altitude', left='Height', bottom='Time', right='', enable=False)
         self.temperature_graph = pg.PlotWidget(title='Temperature', left='Temperature', bottom='Time')
         self.velocity_graph = pg.PlotWidget(title='Velocity', left='Velocity', bottom='Time')
         self.acceleration_graph = pg.PlotWidget(title='Acceleration', left='Acceleration', bottom='Time')
@@ -89,33 +105,41 @@ class view(QWidget):
         def update():
             test1 = np.random.normal(size=1000)
             test2 = np.random.normal(size=1000)
-            # self.altitude_graph.plot(test1, test2, pen='r')
+            self.altitude_graph.clear()
+            self.altitude_graph.plot(test1, test2, pen='r')
 
         altitude_label.clicked.connect(update)
 
-
-
+    @pyqtSlot(list)
     def plot_telemetry_data(self, telemetry_data):
         """ Append telemetry data to lists """
-        self.time_list.append(float(telemetry_data[3]))
-        self.temperature_list.append(float(telemetry_data[4]))
-        self.altitude_list.append(float(telemetry_data[2]))
-        self.velocity_list.append(float(telemetry_data[5]))
-        self.acceleration_list.append(float(telemetry_data[6]))
+        # self.time_list.append(float(telemetry_data[3]))
+        # self.altitude_list.append(float(telemetry_data[2]))
+        # self.temperature_list.append(float(telemetry_data[4]))
+        # self.velocity_list.append(float(telemetry_data[5]))
+        # self.acceleration_list.append(float(telemetry_data[6]))
 
-        self.altitude_graph.plot(self.time_list, self.altitude_list, pen='r')
-        self.temperature_graph.plot(self.time_list, self.temperature_list, pen='r')
-        self.velocity_graph.plot(self.time_list, self.temperature_list, pen='r')
-        self.acceleration_graph.plot(self.time_list, self.temperature_list, pen='r')
+        # self.altitude_graph.plot(self.time_list, self.altitude_list, pen='r')
+        # self.temperature_graph.plot(self.time_list, self.temperature_list, pen='r')
+        # self.velocity_graph.plot(self.time_list, self.temperature_list, pen='r')
+        # self.acceleration_graph.plot(self.time_list, self.temperature_list, pen='r')
 
-
+    start_time = 0
+    @pyqtSlot(list)
     def plot_gps_data(self, telemetry_data):
         """ Append GPS data to lists """
-        utm_coordinates = utm.from_latlon(float(telemetry_data[0]), float(telemetry_data[1]))  # Convert to UTM coordinates
-        self.latitude_list.append(utm_coordinates[0])
-        self.longitude_list.append(utm_coordinates[1])
+        try:
+            utm_coordinates = utm.from_latlon(float(telemetry_data[0]), float(telemetry_data[1]))  # Convert to UTM coordinates
 
+            self.latitude_list.append(utm_coordinates[0])
+            self.longitude_list.append(utm_coordinates[1])
+        except:
+            print("broke")
+
+    def plot_test(self):
         self.position_graph.plot(self.latitude_list, self.longitude_list)
+        self.timer.start(5000)
+
     def update_plots(self):
         pass
 

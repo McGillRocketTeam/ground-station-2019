@@ -2,8 +2,8 @@ import sys
 import time
 
 import qdarkstyle
-from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QThread, QObject, pyqtSignal, pyqtSlot
 
 import model.datastorage as data_storage
 import view as view
@@ -14,7 +14,7 @@ import re
 import datetime
 import math
 
-from guiLoop import guiLoop
+# from guiLoop import guiLoop
 
 """
 data format: Slat,long,alt,time,temp,vel,acc,sat,E
@@ -28,12 +28,14 @@ ground_long = 0  # Ground station longitude
 ground_alt = 0  # Ground station altitude
 
 
-class Parser:
+class Parser(QObject):
     start_time = 0
 
-    def __init__(self, data_storage_in, plots_in):
+    dataChanged = pyqtSignal(list)
+
+    def __init__(self, data_storage_in):
+        super().__init__()
         self.data_storage = data_storage_in
-        self.plots = plots_in
 
         # TODO Add port setup for GPS
         # TODO Automated port check setup
@@ -67,7 +69,8 @@ class Parser:
         # else:
         #     pass
 
-    @guiLoop
+    # @guiLoop
+    @pyqtSlot()
     def parse(self):
         """
         Contains the main while loop is used to repeatedly parse the received data
@@ -83,6 +86,8 @@ class Parser:
 
         while loop_control:
             # time.sleep(0.5)
+            QApplication.instance().processEvents()
+
             real_data = False  # Controls if data is simulated or from actual serial reader
             caladan_data = False  # Controls if we want to use caladan data
             if real_data:
@@ -97,8 +102,8 @@ class Parser:
                 else:
                     telemetry_data += self.simulate_telemetry()
                     gps_data += self.simulate_gps()
-                    print(telemetry_data)
-                    print(gps_data)
+                    # print(telemetry_data)
+                    # print(gps_data)
 
             """ Save raw data to files """
             self.data_storage.save_raw_data(telemetry_data)
@@ -107,7 +112,7 @@ class Parser:
             """ Process telemetry data """
             # processing for full telemetry data:
             result = self.parse_full((telemetry_data, telemetry_data_length))
-            print(result)
+            # print(result)
             return_data = self.process_parsed((result, (200, 300), counter_antenna, telemetry_data, True, True))
             telemetry_data = return_data[0]
             counter_antenna = return_data[1]
@@ -120,7 +125,7 @@ class Parser:
             # return_gps_data = self.process_parsed((gps_result,(200,300),counter_antenna,gps_data,False, False))
             # gps_data = return_gps_data[0]
 
-            yield 0.05
+            # yield 0.05
 
     def process_parsed(self, data):
         """
@@ -148,19 +153,23 @@ class Parser:
                     self.data_storage.save_telemetry_data(data_chunk)
                     self.data_storage.save_gps_data(gps_data_chunk)
 
-                    """ Plot telemetry data and update GUI """
-                    try:
-                        self.plots.plot_telemetry_data(data_chunk)
-                    except:
-                        print("Error plotting telemetry data")
-                    try:
-                        self.plots.plot_gps_data(data_chunk)
-                    except:
-                        print("Error plotting GPS data")
-                    try:
-                        self.plots.update_plots()
-                    except:
-                        print("Error updating plots")
+                    self.dataChanged.emit(gps_data_chunk)
+
+
+                    # """ Plot telemetry data and update GUI """
+
+                    # try:
+                    #     self.plots.plot_telemetry_data(data_chunk)
+                    # except:
+                    #     print("Error plotting telemetry data")
+                    # try:
+                    #     self.plots.plot_gps_data(data_chunk)
+                    # except:
+                    #     print("Error plotting GPS data")
+                    # try:
+                    #     self.plots.update_plots()
+                    # except:
+                    #     print("Error updating plots")
 
                     if update_antenna:
                         counter_antenna += 1
@@ -397,10 +406,10 @@ class Parser:
                     self.plots.plot_telemetry_data(telemetry_data)
                 except:
                     print("Error plotting telemetry data")
-                try:
-                    self.plots.plot_gps_data(data_gps)
-                except:
-                    print("Error plotting gps data")
+                # try:
+                #     self.plots.plot_gps_data(data_gps)
+                # except:
+                #     print("Error plotting gps data")
                 try:
                     self.plots.update_plots()
                 except:
@@ -429,18 +438,18 @@ class Parser:
         pass
 
 
-def main():
-    data_store = data_storage.DataStorage()
+# def main():
+#     data_store = data_storage.DataStorage()
+#
+#     app = QApplication(sys.argv)
+#     app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+#     plots_instance = view.view()
+#
+#     parser = Parser(data_store, plots_instance)
+#     parser.parse()
+#
+#     sys.exit(app.exec_())
 
-    app = QApplication(sys.argv)
-    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
-    plots_instance = view.view()
 
-    parser = Parser(data_store, plots_instance)
-    parser.parse()
-
-    sys.exit(app.exec_())
-
-
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
