@@ -2,17 +2,17 @@ import time
 import sys
 
 import model.datastorage as data_storage
-import view as view
-import qdarkstyle
+import views.plots as view
+# import qdarkstyle
 from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QApplication
+# from PyQt5.QtWidgets import QApplication
 import serial
 from random import randint
 import random
 import re
 import datetime
 import math
-from guiLoop import guiLoop
+# from guiLoop import guiLoop
 
 """
 telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,E\n
@@ -22,8 +22,8 @@ telemetry_data_length = 9  # Length of big telemetry data string
 gps_data_length = 6  # Length of gps data string
 
 counter_gps = 0  # Counter to generate decent GPS data for test only
-ground_lat = 45.45  # Ground station latitude
-ground_long = -73.73  # Ground station longitude
+ground_lat = 46.002915  # Ground station latitude
+ground_long = -72.730381  # Ground station longitude
 ground_alt = 0  # Ground station altitude
 
 
@@ -39,9 +39,10 @@ class Parser:
         # ls /dev/tty.*
         # use above to find port of arduino on mac
 
-        self.port = "COM10"
-        self.port2 = "COM5"
-        self.port3 = "COM12"
+        self.port = "/dev/tty.usbserial-00002114" #number 5 actual telemetry
+        self.port2 = "/dev/tty.usbserial-00002414" #number 3
+        self.port3 = "/dev/tty.usbmodem142201" #number 5 rssi
+        self.port4 = "/dev/tty.usbmodem142301" #number 3 rssi
         self.baud = 19200
         self.baud2 = 9600
         self.byte = serial.EIGHTBITS
@@ -49,7 +50,7 @@ class Parser:
         self.stopbits = serial.STOPBITS_ONE
         self.timeout = 0.2
 
-        # # Setup for telemetry serial
+        # # # Setup for telemetry serial
         ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits, self.timeout)
         self.serial_telemetry = ser
         if not ser.isOpen():
@@ -73,7 +74,15 @@ class Parser:
         else:
             pass
 
-    @guiLoop
+        ser4 = serial.Serial(self.port4, self.baud2, self.byte, self.parity, self.stopbits, self.timeout)
+        self.serial_rssi_gps = ser4
+        if not ser4.isOpen():
+            ser4.open()
+        else:
+            pass
+
+
+    # @guiLoop
     def parse(self):
         """
         Contains the main while loop used to repeatedly parse the received data
@@ -84,6 +93,7 @@ class Parser:
         telemetry_data = ''
         gps_data = ''
         rssi_data = ''
+        rssi_data_gps = ''
         counter_antenna = 0
         loop_control = True
 
@@ -91,12 +101,30 @@ class Parser:
             real_data = True  # Controls if data is simulated or from actual serial reader
             replot_data = False  # Controls if we want to use caladan data
             if real_data:
+                failure = False
                 try:
                     telemetry_data = self.serial_telemetry.readline().decode('utf-8')
-                    gps_data = self.serial_gps.readline().decode('utf-8')
-                    rssi_data = self.serial_rssi.readline().decode('utf-8')
-                    print(rssi_data)
                 except:
+                    failure = True
+                    pass
+                try:
+                    gps_data = self.serial_gps.readline().decode('utf-8')
+                except:
+                    failure = True
+                    pass
+                try:
+                    rssi_data = self.serial_rssi.readline().decode('utf-8')
+                    print('rssi: {}'.format(rssi_data))
+                except:
+                    failure = True
+                    pass
+                try:
+                    rssi_data_gps = self.serial_rssi_gps.readline().decode('utf-8')
+                    print('rssi GPS: {}'.format(rssi_data_gps))
+                except:
+                    failure = True
+                    pass
+                if failure:
                     continue
             else:  # Fake data
                 if replot_data:
@@ -106,10 +134,11 @@ class Parser:
                     telemetry_data = self.simulate_telemetry()
                     gps_data = self.simulate_gps()
                     rssi_data = -12
+                    rssi_data_gps = -120
 
             """ Save raw data to files """
             self.data_storage.save_raw_telemetry_data(telemetry_data, rssi_data)
-            self.data_storage.save_raw_gps_data(gps_data)
+            self.data_storage.save_raw_gps_data(gps_data, rssi_data_gps)
 
             """ Process telemetry data """
             result = self.split_array(telemetry_data, telemetry_data_length)
@@ -178,16 +207,31 @@ class Parser:
                     print("Error calculating antenna angle")
         else:
             self.data_storage.save_gps_data(data)
-            try:
-                self.plots.plot_gps_data(data)
-            except:
-                print("Error plotting GPS data")
-        try:
-            self.plots.update_plots()
-        except:
-            print("Error updating plots")
+            # try:
+            #     self.plots.plot_gps_data(data)
+            # except:
+            #     print("Error plotting GPS data")
+        # try:
+        #     self.plots.update_plots()
+        # except:
+        #     print("Error updating plots")
 
     def convert_string_list_float(self, data):
+        if len(data) == telemetry_data_length:
+            if data[5] == 'A':
+                data[5] = '10'
+            elif data[5] == 'B':
+                data[5] = '11'
+            elif data[5] == 'C':
+                data[5] = '12'
+            elif data[5] == 'D':
+                data[5] = '13'
+            elif data[5] == 'E':
+                data[5] = '14'
+            elif data[5] == 'F':
+                data[5] = '15'
+            else:
+                pass
         listout = [float(x) for x in data]
         return listout
 
@@ -329,14 +373,14 @@ class Parser:
 
 def main():
     data_store = data_storage.DataStorage()
-    app = QApplication(sys.argv)
-    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
-    plots_instance = view.view()
+    # app = QApplication(sys.argv)
+    # app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+    plots_instance = None
 
     parser = Parser(data_store, plots_instance)
     parser.parse()
 
-    sys.exit(app.exec_())
+    #sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
