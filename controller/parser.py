@@ -86,7 +86,6 @@ class Parser(QObject):
 
         while loop_control:
             # time.sleep(0.5)
-            QApplication.instance().processEvents()
 
             real_data = False  # Controls if data is simulated or from actual serial reader
             caladan_data = False  # Controls if we want to use caladan data
@@ -153,7 +152,7 @@ class Parser(QObject):
                     self.data_storage.save_telemetry_data(data_chunk)
                     self.data_storage.save_gps_data(gps_data_chunk)
 
-                    self.dataChanged.emit(gps_data_chunk)
+                    self.dataChanged.emit(data_chunk)
 
 
                     # """ Plot telemetry data and update GUI """
@@ -374,7 +373,7 @@ class Parser(QObject):
 
         """ Create decent GPS coordinates for test """
         counter_gps += 0.1
-        lat = 32 + (counter_gps ** 2) * 0.001
+        lat = (((32 + (counter_gps ** 2) * 0.001) % 84) + 80) % 84
         long = -107 + (counter_gps ** 2) ** 0.002
 
         """ Generate random telemetry data """
