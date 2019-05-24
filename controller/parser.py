@@ -18,12 +18,13 @@ import math
 telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,E\n
 backup GPS data: Slat,long,time,gps_alt,gps_speed,satE\n
 """
-telemetry_data_length = 9  # Length of big telemetry data string
+telemetry_data_length = 10  # Length of big telemetry data string
+# TODO: change back to 9 if we remove RSSI
 gps_data_length = 6  # Length of gps data string
 
 counter_gps = 0  # Counter to generate decent GPS data for test only
-ground_lat = 46.002915  # Ground station latitude
-ground_long = -72.730381  # Ground station longitude
+ground_lat = 46.003684  # Ground station latitude
+ground_long = -72.731535  # Ground station longitude
 ground_alt = 0  # Ground station altitude
 
 
@@ -31,55 +32,85 @@ class Parser:
     start_time = 0
 
     def __init__(self, data_storage_in, plots_in):
+        self.full_telemetry = True
+        self.port_from_file = True  # Controls if the port is read from a file
+        self.real_data = True  # Controls if data is simulated or from actual serial reader
+        self.replot_data = False  # Controls if we want to use caladan data
+
         self.data_storage = data_storage_in
         self.plots = plots_in
+        if self.port_from_file:
+            if self.full_telemetry:
+                f = open("../storage/serial/full_telemetery.txt", "r")
+                self.port_full = f.readline()
+                if len(self.port_full) == 0:
+                    print('Error reading port')
+            else:
+                f = open("../storage/serial/gps_backup.txt", "r")
+                self.port_gps = f.readline()
+                if len(self.port_gps) == 0:
+                    print('Error reading port')
+            f.close()
+
 
         # TODO Automated port check setup
 
         # ls /dev/tty.*
         # use above to find port of arduino on mac
 
-        self.port = "/dev/tty.usbserial-00002114" #number 5 actual telemetry
-        self.port2 = "/dev/tty.usbserial-00002414" #number 3
-        self.port3 = "/dev/tty.usbmodem142201" #number 5 rssi
-        self.port4 = "/dev/tty.usbmodem142301" #number 3 rssi
+        self.port = "/dev/tty.usbserial-00002414" # number 5 actual telemetry
+        self.port2 = "/dev/tty.usbserial-00002114" # number 3
+        self.port3 = "/dev/cu.usbmodem49371501" # number 5 rssi
+        self.port4 = "/dev/tty.usbmodem142201" #number 3 rssi
         self.baud = 19200
         self.baud2 = 9600
+        self.baud_combo = 38400
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
         self.timeout = 0.2
 
         # # # Setup for telemetry serial
-        ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits, self.timeout)
-        self.serial_telemetry = ser
-        if not ser.isOpen():
-            ser.open()
-        else:
-            pass
+        if self.real_data and self.full_telemetry:
+            ser = serial.Serial(self.port_full, self.baud_combo, self.byte, self.parity, self.stopbits, self.timeout)
+            self.serial_telemetry = ser
+            if not ser.isOpen():
+                ser.open()
+            else:
+                pass
 
         # Setup for gps serial
-        ser2 = serial.Serial(self.port2, self.baud, self.byte, self.parity, self.stopbits, self.timeout)
-        self.serial_gps = ser2
-        if not ser2.isOpen():
-            ser2.open()
+        if self.real_data and not self.full_telemetry:
+            ser2 = serial.Serial(self.port_gps, self.baud_combo, self.byte, self.parity, self.stopbits, self.timeout)
+            self.serial_gps = ser2
+            if not ser2.isOpen():
+                ser2.open()
+            else:
+                pass
+        if self.real_data:
+            self.current_ser = self.serial_telemetry if self.full_telemetry else self.serial_gps
         else:
-            pass
+            self.current_ser = None
 
         # Setup for RSSI serial
-        ser3 = serial.Serial(self.port3, self.baud2, self.byte, self.parity, self.stopbits, self.timeout)
-        self.serial_rssi = ser3
-        if not ser3.isOpen():
-            ser3.open()
-        else:
-            pass
+        # ser3 = serial.Serial(self.port3, self.baud2, self.byte, self.parity, self.stopbits, self.timeout)
+        # ser3 = serial.Serial(self.port3, self.baud_combo, self.byte, self.parity, self.stopbits, self.timeout)
+        # self.serial_rssi = ser3
+        # if not ser3.isOpen():
+        #     ser3.open()
+        # else:
+        #     pass
 
-        ser4 = serial.Serial(self.port4, self.baud2, self.byte, self.parity, self.stopbits, self.timeout)
-        self.serial_rssi_gps = ser4
-        if not ser4.isOpen():
-            ser4.open()
-        else:
-            pass
+        # while True:
+        #     x = self.current_ser.readline().decode('UTF-8')
+        #     print(x)
+
+        # ser4 = serial.Serial(self.port4, self.baud2, self.byte, self.parity, self.stopbits, self.timeout)
+        # self.serial_rssi_gps = ser4
+        # if not ser4.isOpen():
+        #     ser4.open()
+        # else:
+        #     pass
 
 
     # @guiLoop
@@ -98,9 +129,8 @@ class Parser:
         loop_control = True
 
         while loop_control:
-            real_data = True  # Controls if data is simulated or from actual serial reader
-            replot_data = False  # Controls if we want to use caladan data
-            if real_data:
+
+            if self.real_data:
                 failure = False
                 try:
                     telemetry_data = self.serial_telemetry.readline().decode('utf-8')
@@ -112,22 +142,22 @@ class Parser:
                 except:
                     failure = True
                     pass
-                try:
-                    rssi_data = self.serial_rssi.readline().decode('utf-8')
-                    print('rssi: {}'.format(rssi_data))
-                except:
-                    failure = True
-                    pass
-                try:
-                    rssi_data_gps = self.serial_rssi_gps.readline().decode('utf-8')
-                    print('rssi GPS: {}'.format(rssi_data_gps))
-                except:
-                    failure = True
-                    pass
+                # try:
+                #     rssi_data = self.serial_rssi.readline().decode('utf-8')
+                #     print('rssi: {}'.format(rssi_data))
+                # except:
+                #     failure = True
+                #     pass
+                # try:
+                #     rssi_data_gps = self.serial_rssi_gps.readline().decode('utf-8')
+                #     print('rssi GPS: {}'.format(rssi_data_gps))
+                # except:
+                #     failure = True
+                #     pass
                 if failure:
                     continue
             else:  # Fake data
-                if replot_data:
+                if self.replot_data:
                     self.replot_flight()
                     break
                 else:

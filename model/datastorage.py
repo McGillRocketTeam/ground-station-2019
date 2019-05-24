@@ -98,7 +98,7 @@ class DataStorage:
                 rawData.write("\n")
                 rawData.close()
 
-    def save_raw_gps_data(self, data):
+    def save_raw_gps_data(self, data, rssi):
         # TODO: Solve for more edge cases if there are any?
         try:
             if isinstance(data, (list, tuple)):
@@ -106,12 +106,12 @@ class DataStorage:
                     for x in data:
                         rawData.write(x)
                         rawData.write("\n")
-                    rawData.write("\n")
+                    rawData.write(str(rssi) + "\n")
                     rawData.close()
             else:
                 with open('../storage/raw_gps/' + self.raw_gps_file_name, 'a+') as rawData:
                     rawData.write(data)
-                    rawData.write("\n")
+                    rawData.write(str(rssi) + "\n")
                     rawData.close()
 
         except TypeError as e:
