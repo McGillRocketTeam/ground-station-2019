@@ -132,16 +132,16 @@ class Parser:
 
             if self.real_data:
                 failure = False
-                try:
-                    telemetry_data = self.serial_telemetry.readline().decode('utf-8')
-                except:
-                    failure = True
-                    pass
-                try:
-                    gps_data = self.serial_gps.readline().decode('utf-8')
-                except:
-                    failure = True
-                    pass
+                if self.full_telemetry:
+                    try:
+                        telemetry_data = self.serial_telemetry.readline().decode('utf-8')
+                    except:
+                        failure = True
+                elif not self.full_telemetry:
+                    try:
+                        gps_data = self.serial_gps.readline().decode('utf-8')
+                    except:
+                        failure = True
                 # try:
                 #     rssi_data = self.serial_rssi.readline().decode('utf-8')
                 #     print('rssi: {}'.format(rssi_data))
@@ -167,22 +167,24 @@ class Parser:
                     rssi_data_gps = -120
 
             """ Save raw data to files """
-            self.data_storage.save_raw_telemetry_data(telemetry_data, rssi_data)
-            self.data_storage.save_raw_gps_data(gps_data, rssi_data_gps)
+            if self.full_telemetry:
+                self.data_storage.save_raw_telemetry_data(telemetry_data, rssi_data)
+            else:
+                self.data_storage.save_raw_gps_data(gps_data, rssi_data_gps)
 
             """ Process telemetry data """
-            result = self.split_array(telemetry_data, telemetry_data_length)
-            # self.log_parse(result)
-            print(result)
-            if result[0] == 200:  # Successfully parsed
-                self.process_parsed(result[1], counter_antenna, True)
-
-            """ Process gps data """
-            gps_result = self.split_array(gps_data, gps_data_length)
-            # self.log_parse(gps_result)
-            print(gps_result)
-            if gps_result[0] == 200:  # Successfully parsed
-                self.process_parsed(gps_result[1], counter_antenna, False)
+            if self.full_telemetry:
+                result = self.split_array(telemetry_data, telemetry_data_length)
+                # self.log_parse(result)
+                print(result)
+                if result[0] == 200:  # Successfully parsed
+                    self.process_parsed(result[1], counter_antenna, True)
+            else:""" Process gps data """
+                gps_result = self.split_array(gps_data, gps_data_length)
+                # self.log_parse(gps_result)
+                print(gps_result)
+                if gps_result[0] == 200:  # Successfully parsed
+                    self.process_parsed(gps_result[1], counter_antenna, False)
 
             counter_antenna += 1
             # yield 0.05
