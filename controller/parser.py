@@ -34,12 +34,12 @@ class Parser:
     def __init__(self, data_storage_in, plots_in):
         self.full_telemetry = True
         self.port_from_file = True  # Controls if the port is read from a file
-        self.real_data = True  # Controls if data is simulated or from actual serial reader
+        self.real_data = False  # Controls if data is simulated or from actual serial reader
         self.replot_data = False  # Controls if we want to use caladan data
 
         self.data_storage = data_storage_in
         self.plots = plots_in
-        if self.port_from_file:
+        if self.port_from_file and self.real_data:
             if self.full_telemetry:
                 f = open("../storage/serial/full_telemetery.txt", "r")
                 self.port_full = f.readline()
@@ -168,9 +168,9 @@ class Parser:
 
             """ Save raw data to files """
             if self.full_telemetry:
-                self.data_storage.save_raw_telemetry_data(telemetry_data, rssi_data)
+                self.data_storage.save_raw_telemetry_data(telemetry_data)
             else:
-                self.data_storage.save_raw_gps_data(gps_data, rssi_data_gps)
+                self.data_storage.save_raw_gps_data(gps_data)
 
             """ Process telemetry data """
             if self.full_telemetry:
@@ -179,7 +179,8 @@ class Parser:
                 print(result)
                 if result[0] == 200:  # Successfully parsed
                     self.process_parsed(result[1], counter_antenna, True)
-            else:""" Process gps data """
+            else:
+                """ Process gps data """
                 gps_result = self.split_array(gps_data, gps_data_length)
                 # self.log_parse(gps_result)
                 print(gps_result)
@@ -250,20 +251,7 @@ class Parser:
 
     def convert_string_list_float(self, data):
         if len(data) == telemetry_data_length:
-            if data[5] == 'A':
-                data[5] = '10'
-            elif data[5] == 'B':
-                data[5] = '11'
-            elif data[5] == 'C':
-                data[5] = '12'
-            elif data[5] == 'D':
-                data[5] = '13'
-            elif data[5] == 'E':
-                data[5] = '14'
-            elif data[5] == 'F':
-                data[5] = '15'
-            else:
-                pass
+            data[5] = int(data[5], 16)
         listout = [float(x) for x in data]
         return listout
 
@@ -354,9 +342,9 @@ class Parser:
         random_data = self.generate_random_data_array()
 
         return 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
-               str(random_data[3]) + ',' + str(random_data[4]) + ',' + str(random_data[5]) + ',' + \
+               str(random_data[3]) + ',' + str(random_data[4]) + ',' + str('D') + ',' + \
                str(random_data[6]) + ',' + str(random_data[7]) + ',' + str(random_data[8]) +\
-               ',E\n'
+               ',' + str(random_data[5]) + ',E\n'
 
     def simulate_gps(self):
         """
@@ -365,7 +353,7 @@ class Parser:
         random_data = self.generate_random_data_array()
 
         string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
-                 str(random_data[3]) + ',' + str(random_data[4]) + ',' + str(random_data[5]) + ',E\n'
+                 str(random_data[3]) + ',' + str(random_data[4]) + ',' + str('E') + ',E\n'
         return string
 
     def generate_random_data_array(self):

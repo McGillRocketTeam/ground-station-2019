@@ -75,7 +75,7 @@ class DataStorage:
                 file_writer.writerow([time.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4], data[5]])
             csvfile_gps.close()
 
-    def save_raw_telemetry_data(self, data, rssi):
+    def save_raw_telemetry_data(self, data):
         # TODO: Solve for more edge cases if there are any?
         try:
             if isinstance(data, (list, tuple)):
@@ -83,12 +83,12 @@ class DataStorage:
                     for x in data:
                         rawData.write(x)
                         rawData.write("\n")
-                    rawData.write(str(rssi) + "\n")  # Save RSSI data at the end
+                    # rawData.write(str(rssi) + "\n")  # Save RSSI data at the end
                     rawData.close()
             else:
                 with open('../storage/raw_telemetry/' + self.raw_telemetry_file_name, 'a+') as rawData:
                     rawData.write(data)
-                    rawData.write(str(rssi) + "\n")  # Save RSSI data at the end
+                    # rawData.write(str(rssi) + "\n")  # Save RSSI data at the end
                     rawData.close()
 
         except TypeError as e:
@@ -98,7 +98,7 @@ class DataStorage:
                 rawData.write("\n")
                 rawData.close()
 
-    def save_raw_gps_data(self, data, rssi):
+    def save_raw_gps_data(self, data):
         # TODO: Solve for more edge cases if there are any?
         try:
             if isinstance(data, (list, tuple)):
@@ -106,12 +106,12 @@ class DataStorage:
                     for x in data:
                         rawData.write(x)
                         rawData.write("\n")
-                    rawData.write(str(rssi) + "\n")
+                    # rawData.write(str(rssi) + "\n")
                     rawData.close()
             else:
                 with open('../storage/raw_gps/' + self.raw_gps_file_name, 'a+') as rawData:
                     rawData.write(data)
-                    rawData.write(str(rssi) + "\n")
+                    # rawData.write(str(rssi) + "\n")
                     rawData.close()
 
         except TypeError as e:
