@@ -6,6 +6,7 @@ import views.plots as view
 # import qdarkstyle
 from PyQt5.QtCore import QTimer
 # from PyQt5.QtWidgets import QApplication
+import controller.serial_sim as serial_sim
 import serial
 from random import randint
 import random
@@ -15,8 +16,8 @@ import math
 # from guiLoop import guiLoop
 
 """
-telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,E\n
-backup GPS data: Slat,long,time,gps_alt,gps_speed,satE\n
+telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,RSSI,E\n
+backup GPS data: Slat,long,time,gps_alt,gps_speed,sat,RSSI,E\n
 """
 telemetry_data_length = 10  # Length of big telemetry data string
 # TODO: change back to 9 if we remove RSSI
@@ -39,6 +40,9 @@ class Parser:
 
         self.data_storage = data_storage_in
         self.plots = plots_in
+        if not self.real_data:
+            self.serial_telemetry = serial_sim.SerialSim(True)
+            self.serial_gps = serial_sim.SerialSim(False)
         if self.port_from_file and self.real_data:
             if self.full_telemetry:
                 f = open("../storage/serial/full_telemetery.txt", "r")
@@ -161,8 +165,8 @@ class Parser:
                     self.replot_flight()
                     break
                 else:
-                    telemetry_data = self.simulate_telemetry()
-                    gps_data = self.simulate_gps()
+                    telemetry_data = self.serial_telemetry.readline()
+                    gps_data = self.serial_gps.readline()
                     rssi_data = -12
                     rssi_data_gps = -120
 
