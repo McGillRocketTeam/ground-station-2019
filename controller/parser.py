@@ -2,10 +2,12 @@ import time
 import sys
 
 import model.datastorage as data_storage
-import views.plots as view
-# import qdarkstyle
-from PyQt5.QtCore import QTimer
-# from PyQt5.QtWidgets import QApplication
+import view as view
+
+import qdarkstyle
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QThread, QObject, pyqtSignal, pyqtSlot
+
 import controller.serial_sim as serial_sim
 import serial
 from random import randint
@@ -29,17 +31,21 @@ ground_long = -72.731535  # Ground station longitude
 ground_alt = 0  # Ground station altitude
 
 
-class Parser:
+class Parser(QObject):
     start_time = 0
 
-    def __init__(self, data_storage_in, plots_in):
+    dataChanged = pyqtSignal(list)
+
+    def __init__(self, data_storage_in):
+        super().__init__()
+
         self.full_telemetry = True
         self.port_from_file = True  # Controls if the port is read from a file
         self.real_data = False  # Controls if data is simulated or from actual serial reader
         self.replot_data = False  # Controls if we want to use caladan data
 
         self.data_storage = data_storage_in
-        self.plots = plots_in
+
         if not self.real_data:
             self.serial_telemetry = serial_sim.SerialSim(True)
             self.serial_gps = serial_sim.SerialSim(False)
@@ -118,6 +124,7 @@ class Parser:
 
 
     # @guiLoop
+    @pyqtSlot()
     def parse(self):
         """
         Contains the main while loop used to repeatedly parse the received data
@@ -183,6 +190,7 @@ class Parser:
                 print(result)
                 if result[0] == 200:  # Successfully parsed
                     self.process_parsed(result[1], counter_antenna, True)
+                    self.dataChanged.emit(result[1])
             else:
                 """ Process gps data """
                 gps_result = self.split_array(gps_data, gps_data_length)
@@ -399,9 +407,8 @@ def main():
     data_store = data_storage.DataStorage()
     # app = QApplication(sys.argv)
     # app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
-    plots_instance = None
 
-    parser = Parser(data_store, plots_instance)
+    parser = Parser(data_store)
     parser.parse()
 
     #sys.exit(app.exec_())
