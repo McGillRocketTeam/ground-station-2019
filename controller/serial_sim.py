@@ -5,10 +5,17 @@ import datetime
 
 class SerialSim:
     start_time = 0
-    def __init__(self, tel_or_gps):
+    fuse_list = []
+    def __init__(self, tel_or_gps, fusee_data):
         global start_time
         start_time = round(datetime.datetime.utcnow().timestamp())
         self.tel = tel_or_gps
+        self.fusee = fusee_data
+        if self.fusee:
+            if self.tel:
+                pass
+            else:
+                pass
         pass
 
     def readline(self):

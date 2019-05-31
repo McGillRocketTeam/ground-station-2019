@@ -43,12 +43,18 @@ class Parser(QObject):
         self.port_from_file = True  # Controls if the port is read from a file
         self.real_data = False  # Controls if data is simulated or from actual serial reader
         self.replot_data = False  # Controls if we want to use caladan data
+        self.fuseefete = True  # Controls if we want to use fuseefete data
 
         self.data_storage = data_storage_in
 
         if not self.real_data:
-            self.serial_telemetry = serial_sim.SerialSim(True)
-            self.serial_gps = serial_sim.SerialSim(False)
+            self.serial_telemetry = serial_sim.SerialSim(True, self.fuseefete)
+            self.serial_gps = serial_sim.SerialSim(False, self.fuseefete)
+            if self.fuseefete:
+                self.telemetry_data_length = 9
+        if self.real_data:
+            self.port_full = ''
+            self.port_gps = ''
         if self.port_from_file and self.real_data:
             if self.full_telemetry:
                 f = open("../storage/serial/full_telemetery.txt", "r")
@@ -61,6 +67,7 @@ class Parser(QObject):
                 if len(self.port_gps) == 0:
                     print('Error reading port')
             f.close()
+
 
 
         # TODO Automated port check setup
