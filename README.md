@@ -1,3 +1,4 @@
+![McGill Rocket Team Logo](https://raw.githubusercontent.com/McGillRocketTeam/ground-station/master/MRT-logo.png)
 # MRT's ground station
 
 ## Developer Setup:
