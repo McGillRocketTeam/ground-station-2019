@@ -206,7 +206,7 @@ class Parser(QObject):
                     if len(to_send) == 9:
                         time.sleep(0.025)
                         to_send[5] = int(to_send[5], 16)
-                        to_send[2] = float(to_send[2]) / 10000
+                        # to_send[2] = float(to_send[2]) / 10000
                         self.dataChanged.emit(to_send)
                 if result[0] == 200:  # Successfully parsed
                     self.process_parsed(result[1], counter_antenna, True)
