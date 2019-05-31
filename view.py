@@ -158,10 +158,10 @@ class view(QWidget):
         telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,RSSI,E\n
         backup GPS data: Slat,long,time,gps_alt,gps_speed,sat,RSSI,E\n
         """
-        self.time_list.append(float(telemetry_data[3]))
-        self.altitude_list.append(float(telemetry_data[2]))
-        self.temperature_list.append(float(telemetry_data[4]))
-        self.velocity_list.append(float(telemetry_data[5]))
+        self.time_list.append(float(telemetry_data[2]))
+        self.altitude_list.append(float(telemetry_data[3]))
+        self.temperature_list.append(float(telemetry_data[7]))
+        self.velocity_list.append(float(telemetry_data[4]))
         self.acceleration_list.append(float(telemetry_data[6]))
 
         """ Append GPS data to lists """
