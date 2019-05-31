@@ -6,6 +6,10 @@ import datetime
 class SerialSim:
     start_time = 0
     tele_count_fusee = 0
+    tele_time_max = 1149574
+    tele_multiplier = 0
+    gps_time_max = 1169235
+    gps_multiplier = 0
     gps_count_fusee = 0
     fuse_list_tele = []
     fuse_list_gps = []
@@ -41,18 +45,28 @@ class SerialSim:
                     else:
                         self.fuse_list_gps.append(t)
 
+    def get_multiplier(self, tele):
+        if tele:
+            return self.tele_multiplier*self.tele_time_max
+        else:
+            return self.gps_multiplier*self.gps_time_max
+        pass
+
     def readline(self):
         print('tele: {}      gps: {}'.format(self.tele_count_fusee, self.gps_count_fusee))
         if self.tel:
             if self.fusee:
                 if self.tel:
                     if self.tele_count_fusee >= len(self.fuse_list_tele):
+                        self.tele_multiplier = self.tele_multiplier + 1
                         self.tele_count_fusee = 0
                     c = self.tele_count_fusee
+                    # if self.tele_count_fusee == (len(self.fuse_list_tele) - 1):
                     self.tele_count_fusee = self.tele_count_fusee + 1
                     return self.fuse_list_tele[c]
                 else:
                     if self.gps_count_fusee >= len(self.fuse_list_gps):
+                        self.gps_multiplier = self.gps_multiplier + 1
                         self.gps_count_fusee = 0
                     c = self.gps_count_fusee
                     self.gps_count_fusee = self.gps_count_fusee + 1

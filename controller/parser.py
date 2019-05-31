@@ -204,8 +204,9 @@ class Parser(QObject):
                     to_send = result[1][0:-1]
                     print('to_send: {}'.format(to_send))
                     if len(to_send) == 9:
-                        time.sleep(0.025)
+                        time.sleep(0.00025)
                         to_send[5] = int(to_send[5], 16)
+                        to_send[2] = float(to_send[2]) + self.serial_telemetry.get_multiplier(self.full_telemetry)
                         # to_send[2] = float(to_send[2]) / 10000
                         self.dataChanged.emit(to_send)
                 if result[0] == 200:  # Successfully parsed
