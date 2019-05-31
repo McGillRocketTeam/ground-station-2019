@@ -17,6 +17,7 @@ from serial.tools import list_ports
 def port_finder():
     full_telemetery = True
     write_to_file = True
+    input('Unplug all usb which you want to detect')
     try:
         if full_telemetery:
             os.remove('.../storage/serial/full_telemetery.txt')
@@ -54,9 +55,9 @@ def port_finder():
     rssi_port = ''
     port_option = []
     if full_telemetery:
-        f = open(".../storage/serial/full_telemetery.txt", "w+")
+        f = open("../storage/serial/full_telemetery.txt", "w+")
     else:
-        f = open(".../storage/serial/gps_backup.txt", "w+")
+        f = open("../storage/serial/gps_backup.txt", "w+")
     if write_to_file:
         f.write('{}'.format(main_port))
     f.close()

@@ -5,7 +5,10 @@ import datetime
 
 class SerialSim:
     start_time = 0
-    fuse_list = []
+    tele_count_fusee = 0
+    gps_count_fusee = 0
+    fuse_list_tele = []
+    fuse_list_gps = []
     def __init__(self, tel_or_gps, fusee_data):
         global start_time
         start_time = round(datetime.datetime.utcnow().timestamp())
@@ -13,14 +16,49 @@ class SerialSim:
         self.fusee = fusee_data
         if self.fusee:
             if self.tel:
-                pass
+                with open('./Fusee-Fete/raw_telemetry_fuseefete.txt', 'r') as f:
+                    content = f.readlines()
             else:
-                pass
+                with open('./Fusee-Fete/raw_gps_fuseefete.txt', 'r') as f:
+                    content = f.readlines()
+            self.manage_content(content, self.tel)
+            x = 'debug'
         pass
 
+    def manage_content(self, content, tel):
+        for s in content:
+            if s != '\n' and s != 'Raw Data:\n' and s != '________________________________________\n':
+                t = s.strip('\n')
+                try:
+                    u = int(t)
+                except:
+                    u = -100000000
+                if u > -90 and u < -40:
+                    pass
+                else:
+                    if tel:
+                        self.fuse_list_tele.append(t)
+                    else:
+                        self.fuse_list_gps.append(t)
+
     def readline(self):
+        print('tele: {}      gps: {}'.format(self.tele_count_fusee, self.gps_count_fusee))
         if self.tel:
-            return self.simulate_telemetry()
+            if self.fusee:
+                if self.tel:
+                    if self.tele_count_fusee >= len(self.fuse_list_tele):
+                        self.tele_count_fusee = 0
+                    c = self.tele_count_fusee
+                    self.tele_count_fusee = self.tele_count_fusee + 1
+                    return self.fuse_list_tele[c]
+                else:
+                    if self.gps_count_fusee >= len(self.fuse_list_gps):
+                        self.gps_count_fusee = 0
+                    c = self.gps_count_fusee
+                    self.gps_count_fusee = self.gps_count_fusee + 1
+                    return self.fuse_list_gps[c]
+            else:
+                return self.simulate_telemetry()
         else:
             return self.simulate_gps()
 

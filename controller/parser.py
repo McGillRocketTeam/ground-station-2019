@@ -48,10 +48,12 @@ class Parser(QObject):
         self.data_storage = data_storage_in
 
         if not self.real_data:
-            self.serial_telemetry = serial_sim.SerialSim(True, self.fuseefete)
-            self.serial_gps = serial_sim.SerialSim(False, self.fuseefete)
+            if self.full_telemetry:
+                self.serial_telemetry = serial_sim.SerialSim(True, self.fuseefete)
+            else:
+                self.serial_gps = serial_sim.SerialSim(False, self.fuseefete)
             if self.fuseefete:
-                self.telemetry_data_length = 9
+                self.telemetry_data_length = 8
         if self.real_data:
             self.port_full = ''
             self.port_gps = ''
@@ -179,8 +181,10 @@ class Parser(QObject):
                     self.replot_flight()
                     break
                 else:
-                    telemetry_data = self.serial_telemetry.readline()
-                    gps_data = self.serial_gps.readline()
+                    if self.full_telemetry:
+                        telemetry_data = self.serial_telemetry.readline()
+                    elif not self.full_telemetry:
+                        gps_data = self.serial_gps.readline()
                     rssi_data = -12
                     rssi_data_gps = -120
 
@@ -195,6 +199,13 @@ class Parser(QObject):
                 result = self.split_array(telemetry_data, telemetry_data_length)
                 # self.log_parse(result)
                 print(result)
+                if self.fuseefete and result[0] == 400:
+                    result[1][0] = result[1][0].strip('S')
+                    to_send = result[1][0:-1]
+                    print('to_send: {}'.format(to_send))
+                    if len(to_send) == 9:
+                        to_send[5] = int(to_send[5], 16)
+                        self.dataChanged.emit(to_send)
                 if result[0] == 200:  # Successfully parsed
                     self.process_parsed(result[1], counter_antenna, True)
                     self.dataChanged.emit(result[1])
