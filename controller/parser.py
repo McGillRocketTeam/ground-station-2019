@@ -21,9 +21,9 @@ import math
 telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,RSSI,E\n
 backup GPS data: Slat,long,time,gps_alt,gps_speed,sat,RSSI,E\n
 """
-telemetry_data_length = 10  # Length of big telemetry data string
+telemetry_data_length = 9  # Length of big telemetry data string
 # TODO: change back to 9 if we remove RSSI
-gps_data_length = 6  # Length of gps data string
+gps_data_length = 7  # Length of gps data string
 
 counter_gps = 0  # Counter to generate decent GPS data for test only
 ground_lat = 46.003684  # Ground station latitude
@@ -59,12 +59,12 @@ class Parser(QObject):
             self.port_gps = ''
         if self.port_from_file and self.real_data:
             if self.full_telemetry:
-                f = open("../storage/serial/full_telemetery.txt", "r")
+                f = open("./storage/serial/full_telemetery.txt", "r")
                 self.port_full = f.readline()
                 if len(self.port_full) == 0:
                     print('Error reading port')
             else:
-                f = open("../storage/serial/gps_backup.txt", "r")
+                f = open("./storage/serial/gps_backup.txt", "r")
                 self.port_gps = f.readline()
                 if len(self.port_gps) == 0:
                     print('Error reading port')
@@ -83,7 +83,8 @@ class Parser(QObject):
         self.port4 = "/dev/tty.usbmodem142201" #number 3 rssi
         self.baud = 19200
         self.baud2 = 9600
-        self.baud_combo = 38400
+        # self.baud_combo = 38400
+        self.baud_combo = 19200
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
@@ -155,6 +156,7 @@ class Parser(QObject):
                 if self.full_telemetry:
                     try:
                         telemetry_data = self.serial_telemetry.readline().decode('utf-8')
+                        print(telemetry_data)
                     except:
                         failure = True
                 elif not self.full_telemetry:
@@ -204,7 +206,7 @@ class Parser(QObject):
                     to_send = result[1][0:-1]
                     print('to_send: {}'.format(to_send))
                     if len(to_send) == 9:
-                        time.sleep(0.00025)
+                        time.sleep(0.0025)
                         to_send[5] = int(to_send[5], 16)
                         to_send[2] = float(to_send[2]) + self.serial_telemetry.get_multiplier(self.full_telemetry)
                         # to_send[2] = float(to_send[2]) / 10000
@@ -216,9 +218,10 @@ class Parser(QObject):
                 """ Process gps data """
                 gps_result = self.split_array(gps_data, gps_data_length)
                 # self.log_parse(gps_result)
-                print(gps_result)
+                print('gps result (parser 220): {}'.format(gps_result))
                 if gps_result[0] == 200:  # Successfully parsed
                     self.process_parsed(gps_result[1], counter_antenna, False)
+                    self.dataChanged.emit(gps_result[1])
 
             counter_antenna += 1
             # yield 0.05
