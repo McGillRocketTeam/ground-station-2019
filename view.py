@@ -149,6 +149,19 @@ class view(QWidget):
         self.setWindowTitle('MRT Ground Station')
         self.show()
 
+        self.rssi_list = []
+
+        self.lat = 0
+        self.long = 0
+        self.time = 0
+        self.alt = 0
+        self.vel = 0
+        self.sat = 0
+        self.accel = 0
+        self.temp = 0
+        self.gyro_x = 0
+
+        self.cutoff = 100
 
     @pyqtSlot(list)
     def append_data(self, telemetry_data):
@@ -158,18 +171,37 @@ class view(QWidget):
         telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,RSSI,E\n
         backup GPS data: Slat,long,time,gps_alt,gps_speed,sat,RSSI,E\n
         """
-        self.time_list.append(float(telemetry_data[2]))
-        self.altitude_list.append(float(telemetry_data[3]))
-        self.temperature_list.append(float(telemetry_data[7]))
-        self.velocity_list.append(float(telemetry_data[4]))
-        self.acceleration_list.append(float(telemetry_data[6]))
+        self.lat = telemetry_data[0]
+        self.long = telemetry_data[1]
+        self.time = telemetry_data[2]
+        self.alt = telemetry_data[3]
+        self.vel = telemetry_data[4]
+        self.sat = telemetry_data[5]
+        self.accel = 0
+        self.temp = 0
+        self.gyro_x = 0
+        if len(telemetry_data) >= 9:
+            self.accel = telemetry_data[6]
+            self.temp = telemetry_data[7]
+            self.gyro_x = telemetry_data[8]
+            if len(telemetry_data) == 10:
+                self.rssi = telemetry_data[9]
+        elif len(telemetry_data) == 7:
+            self.rssi = telemetry_data[6]
+        self.time_list.append(float(self.time))
+        self.altitude_list.append(float(self.alt))
+        self.temperature_list.append(float(self.temp))
+        self.velocity_list.append(float(self.vel))
+        self.acceleration_list.append(float(self.accel))
 
         """ Append GPS data to lists """
         try:
-            utm_coordinates = utm.from_latlon(float(telemetry_data[0]), float(telemetry_data[1]))  # Convert to UTM coordinates
+            utm_coordinates = utm.from_latlon(float(self.lat), float(self.long))  # Convert to UTM coordinates
 
-            self.latitude_list.append(utm_coordinates[0])
-            self.longitude_list.append(utm_coordinates[1])
+            # self.latitude_list.append(utm_coordinates[0])
+            # self.longitude_list.append(utm_coordinates[1])
+            self.latitude_list.append(float(self.lat))
+            self.longitude_list.append(float(self.long))
         except:
             print("latlong broken")
 
@@ -188,21 +220,25 @@ class view(QWidget):
         self.acceleration_graph.clear()
         self.position_graph.clear()
 
-        self.altitude_graph.plot(self.time_list, self.altitude_list, pen='r')
-        self.temperature_graph.plot(self.time_list, self.temperature_list, pen='r')
-        self.velocity_graph.plot(self.time_list, self.velocity_list, pen='r')
-        self.acceleration_graph.plot(self.time_list, self.acceleration_list, pen='r')
-        self.position_graph.plot(self.latitude_list, self.longitude_list)
+        if len(self.altitude_list) > self.cutoff+1:
+            self.altitude_graph.plot(self.time_list[-self.cutoff:-1], self.altitude_list[-self.cutoff:-1], pen='r')
+            self.temperature_graph.plot(self.time_list[-self.cutoff:-1], self.temperature_list[-self.cutoff:-1], pen='r')
+            self.velocity_graph.plot(self.time_list[-self.cutoff:-1], self.velocity_list[-self.cutoff:-1], pen='r')
+            self.acceleration_graph.plot(self.time_list[-self.cutoff:-1], self.acceleration_list[-self.cutoff:-1], pen='r')
+            self.position_graph.plot(self.latitude_list[-self.cutoff:-1], self.longitude_list[-self.cutoff:-1])
+            self.position_graph.plot(self.longitude_list[-2:-1], self.longitude_list[-2:-1], pen='r')
 
-        self.altitude_LCD.display(self.altitude_list[-1])
-        self.temperature_LCD.display(self.temperature_list[-1])
-        self.velocity_LCD.display(self.velocity_list[-1])
-        self.acceleration_LCD.display(self.acceleration_list[-1])
-        self.positionX_LCD.display(self.latitude_list[-1])
-        self.positionY_LCD.display(self.longitude_list[-1])
+
+        self.altitude_LCD.display(self.alt)
+        self.temperature_LCD.display(self.temp)
+        self.velocity_LCD.display(self.vel)
+        self.acceleration_LCD.display(self.accel)
+        self.positionX_LCD.display(self.lat)
+        self.positionY_LCD.display(self.long)
+
         self.timer.start(0)
 
-        print(len(self.altitude_list))
+        # print(len(self.altitude_list))
 
     def update_plots(self):
         pass

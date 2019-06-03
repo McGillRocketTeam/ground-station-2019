@@ -21,9 +21,9 @@ import math
 telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,RSSI,E\n
 backup GPS data: Slat,long,time,gps_alt,gps_speed,sat,RSSI,E\n
 """
-telemetry_data_length = 9  # Length of big telemetry data string
+telemetry_data_length = 10  # Length of big telemetry data string
 # TODO: change back to 9 if we remove RSSI
-gps_data_length = 7  # Length of gps data string
+gps_data_length = 6  # Length of gps data string
 
 counter_gps = 0  # Counter to generate decent GPS data for test only
 ground_lat = 46.003684  # Ground station latitude
@@ -41,9 +41,9 @@ class Parser(QObject):
 
         self.full_telemetry = True
         self.port_from_file = True  # Controls if the port is read from a file
-        self.real_data = False  # Controls if data is simulated or from actual serial reader
+        self.real_data = True  # Controls if data is simulated or from actual serial reader
         self.replot_data = False  # Controls if we want to use caladan data
-        self.fuseefete = True  # Controls if we want to use fuseefete data
+        self.fuseefete = False  # Controls if we want to use fuseefete data
 
         self.data_storage = data_storage_in
 
@@ -83,8 +83,8 @@ class Parser(QObject):
         self.port4 = "/dev/tty.usbmodem142201" #number 3 rssi
         self.baud = 19200
         self.baud2 = 9600
-        # self.baud_combo = 38400
-        self.baud_combo = 19200
+        self.baud_combo = 38400
+        # self.baud_combo = 19200
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
