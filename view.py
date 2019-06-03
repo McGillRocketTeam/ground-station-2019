@@ -51,7 +51,8 @@ class view(QWidget):
         self.fps_label = QLabel()
 
         self.altitude_graph = pg.PlotWidget(title='Altitude', left='Height', bottom='Time')
-        self.temperature_graph = pg.PlotWidget(title='Temperature', left='Temperature', bottom='Time')
+        # self.temperature_graph = pg.PlotWidget(title='Temperature', left='Temperature', bottom='Time')
+        self.rssi_graph = pg.PlotWidget(title='RSSI', left='RSSI', bottom='Time')
         self.velocity_graph = pg.PlotWidget(title='Velocity', left='Velocity', bottom='Time')
         self.acceleration_graph = pg.PlotWidget(title='Acceleration', left='Acceleration', bottom='Time')
         self.position_graph = pg.PlotWidget(title='Position', left='Y Coordinate', bottom='X Coordinate')
@@ -70,21 +71,24 @@ class view(QWidget):
         # self.altitude_graph.setLimits(xMax=100)
 
         self.altitude_LCD = QLCDNumber(self)
-        self.temperature_LCD = QLCDNumber(self)
+        # self.temperature_LCD = QLCDNumber(self)
+        self.rssi_LCD = QLCDNumber(self)
         self.velocity_LCD = QLCDNumber(self)
         self.acceleration_LCD = QLCDNumber(self)
         self.positionX_LCD = QLCDNumber(self)
         self.positionY_LCD = QLCDNumber(self)
 
-        self.altitude_LCD.setDigitCount(6)
-        self.temperature_LCD.setDigitCount(6)
-        self.velocity_LCD.setDigitCount(6)
-        self.acceleration_LCD.setDigitCount(6)
-        self.positionX_LCD.setDigitCount(8)
-        self.positionY_LCD.setDigitCount(8)
+        self.altitude_LCD.setDigitCount(9)
+        # self.temperature_LCD.setDigitCount(9)
+        self.rssi_LCD.setDigitCount(4)
+        self.velocity_LCD.setDigitCount(9)
+        self.acceleration_LCD.setDigitCount(9)
+        self.positionX_LCD.setDigitCount(10)
+        self.positionY_LCD.setDigitCount(10)
 
         altitude_label = QLabel("Current Altitude")
-        temperature_label = QLabel("Current Temperature")
+        # temperature_label = QLabel("Current Temperature")
+        rssi_label = QLabel("RSSI")
         velocity_label = QLabel("Current Velocity")
         acceleration_label = QLabel("Current Acceleration")
         position_label = QLabel("Current Position")
@@ -100,7 +104,8 @@ class view(QWidget):
         hbox_Logo.addWidget(self.fps_label)
 
         vbox_inner_Graphs.addWidget(self.altitude_graph)
-        vbox_inner_Graphs.addWidget(self.temperature_graph)
+        # vbox_inner_Graphs.addWidget(self.temperature_graph)
+        vbox_inner_Graphs.addWidget(self.rssi_graph)
         vbox_inner_Graphs.addWidget(self.velocity_graph)
         vbox_inner_Graphs.addWidget(self.acceleration_graph)
         hbox_Graphs.addLayout(vbox_inner_Graphs)
@@ -108,8 +113,10 @@ class view(QWidget):
 
         vbox_Indicators.addWidget(altitude_label)
         vbox_Indicators.addWidget(self.altitude_LCD)
-        vbox_Indicators.addWidget(temperature_label)
-        vbox_Indicators.addWidget(self.temperature_LCD)
+        # vbox_Indicators.addWidget(temperature_label)
+        # vbox_Indicators.addWidget(self.temperature_LCD)
+        vbox_Indicators.addWidget(rssi_label)
+        vbox_Indicators.addWidget(self.rssi_LCD)
         vbox_Indicators.addWidget(velocity_label)
         vbox_Indicators.addWidget(self.velocity_LCD)
         vbox_Indicators.addWidget(acceleration_label)
@@ -162,7 +169,7 @@ class view(QWidget):
         self.temp = 0
         self.gyro_x = 0
 
-        self.cutoff = -1
+        self.cutoff = -0
 
     @pyqtSlot(list)
     def append_data(self, telemetry_data):
@@ -181,14 +188,18 @@ class view(QWidget):
         self.accel = 0
         self.temp = 0
         self.gyro_x = 0
+        self.rssi = 0
         if len(telemetry_data) >= 9:
             self.accel = telemetry_data[6]
             self.temp = telemetry_data[7]
             self.gyro_x = telemetry_data[8]
             if len(telemetry_data) == 10:
                 self.rssi = telemetry_data[9]
+                self.rssi_list.append(float(self.rssi))
         elif len(telemetry_data) == 7:
             self.rssi = telemetry_data[6]
+            self.rssi_list.append(float(self.rssi))
+
         self.time_list.append(float(self.time))
         self.altitude_list.append(float(self.alt))
         self.temperature_list.append(float(self.temp))
@@ -216,23 +227,30 @@ class view(QWidget):
         self.fps_label.setText("Generating %0.2f fps" % self.avgFps)
 
         self.altitude_graph.clear()
-        self.temperature_graph.clear()
+        # self.temperature_graph.clear()
+        self.rssi_graph.clear()
         self.velocity_graph.clear()
         self.acceleration_graph.clear()
         self.position_graph.clear()
 
         if len(self.altitude_list) > self.cutoff+1:
             self.altitude_graph.plot(self.time_list[-self.cutoff:-1], self.altitude_list[-self.cutoff:-1], pen='r')
-            self.temperature_graph.plot(self.time_list[-self.cutoff:-1], self.temperature_list[-self.cutoff:-1], pen='r')
+            self.altitude_graph.plot([self.time], [self.alt], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+            # self.temperature_graph.plot(self.time_list[-self.cutoff:-1], self.temperature_list[-self.cutoff:-1], pen='r')
             self.velocity_graph.plot(self.time_list[-self.cutoff:-1], self.velocity_list[-self.cutoff:-1], pen='r')
+            self.velocity_graph.plot([self.time], [self.vel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
             self.acceleration_graph.plot(self.time_list[-self.cutoff:-1], self.acceleration_list[-self.cutoff:-1], pen='r')
+            self.acceleration_graph.plot([self.time], [self.accel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
             self.position_graph.plot(self.latitude_list[-self.cutoff:-1], self.longitude_list[-self.cutoff:-1])
-
+            if len(self.time_list) == len(self.rssi_list):
+                self.rssi_graph.plot(self.time_list[-self.cutoff:-1], self.rssi_list[-self.cutoff:-1], pen='r')
+                self.rssi_graph.plot([self.time], [self.rssi], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
             # This line adds an X marking the last gps location
-            self.position_graph.plot([self.lat], [self.long], pen=None, symbol='x', symbolBrush=(255, 0, 0))
+            self.position_graph.plot([self.lat], [self.long], pen=None, symbol='o', symbolBrush=(255, 0, 0), symbolSize=6.5)
 
         self.altitude_LCD.display(self.alt)
-        self.temperature_LCD.display(self.temp)
+        # self.temperature_LCD.display(self.temp)
+        self.rssi_LCD.display(self.rssi)
         self.velocity_LCD.display(self.vel)
         self.acceleration_LCD.display(self.accel)
         self.positionX_LCD.display(self.lat)
