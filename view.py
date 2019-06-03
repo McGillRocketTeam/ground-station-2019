@@ -34,6 +34,7 @@ class view(QWidget):
         self.cutoff = 0
 
         """Optimization settings"""
+        self.end_dots = True
         self.graph_update_count = 0
         self.graph_update_interval = 3  # Increase this value to speed up graphing
         self.optimize_fps = True
@@ -267,16 +268,19 @@ class view(QWidget):
 
             if len(self.altitude_list) > self.cutoff+1:
                 self.altitude_graph.plot(self.time_list[-self.cutoff:-1], self.altitude_list[-self.cutoff:-1], pen='r')
-                # self.altitude_graph.plot([self.time], [self.alt], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
                 # self.temperature_graph.plot(self.time_list[-self.cutoff:-1], self.temperature_list[-self.cutoff:-1], pen='r')
                 self.velocity_graph.plot(self.time_list[-self.cutoff:-1], self.velocity_list[-self.cutoff:-1], pen='r')
-                # self.velocity_graph.plot([self.time], [self.vel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
                 self.acceleration_graph.plot(self.time_list[-self.cutoff:-1], self.acceleration_list[-self.cutoff:-1], pen='r')
-                # self.acceleration_graph.plot([self.time], [self.accel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+
                 self.position_graph.plot(self.latitude_list[-self.cutoff:-1], self.longitude_list[-self.cutoff:-1])
+                if self.end_dots:
+                    self.velocity_graph.plot([self.time], [self.vel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+                    self.acceleration_graph.plot([self.time], [self.accel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+                    self.altitude_graph.plot([self.time], [self.alt], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
                 if len(self.time_list) == len(self.rssi_list):
                     self.rssi_graph.plot(self.time_list[-self.cutoff:-1], self.rssi_list[-self.cutoff:-1], pen='r')
-                    # self.rssi_graph.plot([self.time], [self.rssi], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+                    if self.end_dots:
+                        self.rssi_graph.plot([self.time], [self.rssi], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
                 # This line adds an X marking the last gps location
                 self.position_graph.plot([self.lat], [self.long], pen=None, symbol='o', symbolBrush=(255, 0, 0), symbolSize=6.5)
         else:
