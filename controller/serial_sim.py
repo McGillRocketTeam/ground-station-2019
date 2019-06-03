@@ -54,7 +54,7 @@ class SerialSim:
         pass
 
     def readline(self):
-        print('tele: {}      gps: {}'.format(self.tele_count_fusee, self.gps_count_fusee))
+        # print('tele: {}      gps: {}'.format(self.tele_count_fusee, self.gps_count_fusee))
         if self.tel:
             if self.fusee:
                 if self.tel:

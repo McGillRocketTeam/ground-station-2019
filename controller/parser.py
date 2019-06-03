@@ -41,9 +41,9 @@ class Parser(QObject):
 
         self.full_telemetry = True
         self.port_from_file = True  # Controls if the port is read from a file
-        self.real_data = True  # Controls if data is simulated or from actual serial reader
+        self.real_data = False  # Controls if data is simulated or from actual serial reader
         self.replot_data = False  # Controls if we want to use caladan data
-        self.fuseefete = False  # Controls if we want to use fuseefete data
+        self.fuseefete = True  # Controls if we want to use fuseefete data
 
         self.data_storage = data_storage_in
 
@@ -183,8 +183,10 @@ class Parser(QObject):
                     self.replot_flight()
                     break
                 else:
+                    time.sleep(0.002)
                     if self.full_telemetry:
                         telemetry_data = self.serial_telemetry.readline()
+                        print('parser(189): {}'.format(telemetry_data))
                     elif not self.full_telemetry:
                         gps_data = self.serial_gps.readline()
                     rssi_data = -12
@@ -200,18 +202,19 @@ class Parser(QObject):
             if self.full_telemetry:
                 result = self.split_array(telemetry_data, telemetry_data_length)
                 # self.log_parse(result)
-                print(result)
+                # print(result)
                 if self.fuseefete and result[0] == 400:
                     result[1][0] = result[1][0].strip('S')
                     to_send = result[1][0:-1]
-                    print('to_send: {}'.format(to_send))
+                    # print('to_send: {}'.format(to_send))
                     if len(to_send) == 9:
-                        time.sleep(0.0025)
+                        # time.sleep(0.0025)
                         to_send[5] = int(to_send[5], 16)
                         to_send[2] = float(to_send[2]) + self.serial_telemetry.get_multiplier(self.full_telemetry)
                         # to_send[2] = float(to_send[2]) / 10000
                         self.dataChanged.emit(to_send)
                 if result[0] == 200:  # Successfully parsed
+                    # print(result[1])
                     self.process_parsed(result[1], counter_antenna, True)
                     self.dataChanged.emit(result[1])
             else:
