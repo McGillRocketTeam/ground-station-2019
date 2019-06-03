@@ -13,6 +13,7 @@ class SerialSim:
     gps_count_fusee = 0
     fuse_list_tele = []
     fuse_list_gps = []
+
     def __init__(self, tel_or_gps, fusee_data):
         global start_time
         start_time = round(datetime.datetime.utcnow().timestamp())
@@ -26,7 +27,7 @@ class SerialSim:
                 with open('./Fusee-Fete/raw_gps_fuseefete.txt', 'r') as f:
                     content = f.readlines()
             self.manage_content(content, self.tel)
-            x = 'debug'
+            # x = 'debug'
         pass
 
     def manage_content(self, content, tel):
@@ -72,6 +73,7 @@ class SerialSim:
                     self.gps_count_fusee = self.gps_count_fusee + 1
                     return self.fuse_list_gps[c]
             else:
+                # return 'S45.505520,-73.576042,679274,-3.48,2.203880,B,9.95,17.79,0.187500,-73,E'  # self.simulate_gps()
                 return self.simulate_telemetry()
         else:
             return self.simulate_gps()
@@ -82,10 +84,10 @@ class SerialSim:
         """
         random_data = self.generate_random_data_array()
 
-        return 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
-               str(random_data[3]) + ',' + str(random_data[4]) + ',' + str('D') + ',' + \
-               str(random_data[6]) + ',' + str(random_data[7]) + ',' + str(random_data[8]) +\
-               ',' + str('12345') + ',E\n'
+        return 'S' + str(random_data[0])[0:10] + ',' + str(random_data[1])[0:10] + ',' + str(random_data[2])[0:8] + ',' + \
+               str(random_data[3])[0:8] + ',' + str(random_data[4])[0:8] + ',' + str('D')[0:8] + ',' + \
+               str(random_data[6])[0:8] + ',' + str(random_data[7])[0:8] + ',' + str(random_data[8])[0:8] +\
+               ',' + str(random_data[-1]) + ',E\n'
 
     def simulate_gps(self):
         """
@@ -120,6 +122,7 @@ class SerialSim:
         gyro_x = randint(min_random, max_random) + random.random()
         acc = randint(min_random, max_random) + random.random()
         sat = randint(min_random, max_random) + random.random()
+        rssi = randint(-200, 200)
         global start_time
         current_time = round(datetime.datetime.utcnow().timestamp()) - start_time
-        return [lat, long, current_time, alt, vel, sat, acc, temp, gyro_x]
+        return [lat+(current_time % 5000)+random.random(), long+(current_time % 5000)+random.random(), current_time, alt, vel, sat, acc, temp, gyro_x, rssi]

@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QLabel, QGridLayout, QLCDNumber)
+from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QLabel, QGridLayout, QLCDNumber, QLineEdit, QPushButton)
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer
 import pyqtgraph as pg
@@ -70,6 +70,12 @@ class view(QWidget):
         # self.altitude_graph.setRange(xRange=[0, 10])
         # self.altitude_graph.setLimits(xMax=100)
 
+        self.text_box = QLineEdit(self)
+        self.text_box.setFixedWidth(200)
+        self.button = QPushButton('Update Cutoff', self)
+        self.button.clicked.connect(self.on_click)
+        self.button.setFixedWidth(150)
+
         self.altitude_LCD = QLCDNumber(self)
         # self.temperature_LCD = QLCDNumber(self)
         self.rssi_LCD = QLCDNumber(self)
@@ -102,6 +108,11 @@ class view(QWidget):
         """Layout Management"""
         hbox_Logo.addWidget(logo_Lbl)
         hbox_Logo.addWidget(self.fps_label)
+        hbox_Logo.addWidget(self.text_box)
+        hbox_Logo.addWidget(self.button)
+
+
+
 
         vbox_inner_Graphs.addWidget(self.altitude_graph)
         # vbox_inner_Graphs.addWidget(self.temperature_graph)
@@ -179,32 +190,37 @@ class view(QWidget):
         telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,RSSI,E\n
         backup GPS data: Slat,long,time,gps_alt,gps_speed,sat,RSSI,E\n
         """
-        self.lat = telemetry_data[0]
-        self.long = telemetry_data[1]
-        self.time = telemetry_data[2]
-        self.alt = telemetry_data[3]
-        self.vel = telemetry_data[4]
-        self.sat = telemetry_data[5]
-        self.accel = 0
-        self.temp = 0
-        self.gyro_x = 0
-        self.rssi = 0
-        if len(telemetry_data) >= 9:
-            self.accel = telemetry_data[6]
-            self.temp = telemetry_data[7]
-            self.gyro_x = telemetry_data[8]
-            if len(telemetry_data) == 10:
-                self.rssi = telemetry_data[9]
+        try:
+            self.lat = float(telemetry_data[0])
+            self.long = float(telemetry_data[1])
+            self.time = float(telemetry_data[2])
+            self.alt = float(telemetry_data[3])
+            self.vel = float(telemetry_data[4])
+            self.sat = float(telemetry_data[5])
+            self.accel = 0
+            self.temp = 0
+            self.gyro_x = 0
+            self.rssi = 0
+            if len(telemetry_data) >= 9:
+                self.accel = float(telemetry_data[6])
+                self.temp = float(telemetry_data[7])
+                self.gyro_x = float(telemetry_data[8])
+                if len(telemetry_data) == 10:
+                    self.rssi = float(telemetry_data[9])
+                    self.rssi_list.append(float(self.rssi))
+            elif len(telemetry_data) == 7:
+                self.rssi = float(telemetry_data[6])
                 self.rssi_list.append(float(self.rssi))
-        elif len(telemetry_data) == 7:
-            self.rssi = telemetry_data[6]
-            self.rssi_list.append(float(self.rssi))
 
-        self.time_list.append(float(self.time))
-        self.altitude_list.append(float(self.alt))
-        self.temperature_list.append(float(self.temp))
-        self.velocity_list.append(float(self.vel))
-        self.acceleration_list.append(float(self.accel))
+            self.time_list.append(float(self.time))
+            self.altitude_list.append(float(self.alt))
+            self.temperature_list.append(float(self.temp))
+            self.velocity_list.append(float(self.vel))
+            self.acceleration_list.append(float(self.accel))
+        except:
+            print('INVALID DATA SENT TO VIEW')
+
+
 
         """ Append GPS data to lists """
         try:
@@ -235,16 +251,16 @@ class view(QWidget):
 
         if len(self.altitude_list) > self.cutoff+1:
             self.altitude_graph.plot(self.time_list[-self.cutoff:-1], self.altitude_list[-self.cutoff:-1], pen='r')
-            self.altitude_graph.plot([self.time], [self.alt], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+            # self.altitude_graph.plot([self.time], [self.alt], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
             # self.temperature_graph.plot(self.time_list[-self.cutoff:-1], self.temperature_list[-self.cutoff:-1], pen='r')
             self.velocity_graph.plot(self.time_list[-self.cutoff:-1], self.velocity_list[-self.cutoff:-1], pen='r')
-            self.velocity_graph.plot([self.time], [self.vel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+            # self.velocity_graph.plot([self.time], [self.vel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
             self.acceleration_graph.plot(self.time_list[-self.cutoff:-1], self.acceleration_list[-self.cutoff:-1], pen='r')
-            self.acceleration_graph.plot([self.time], [self.accel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+            # self.acceleration_graph.plot([self.time], [self.accel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
             self.position_graph.plot(self.latitude_list[-self.cutoff:-1], self.longitude_list[-self.cutoff:-1])
             if len(self.time_list) == len(self.rssi_list):
                 self.rssi_graph.plot(self.time_list[-self.cutoff:-1], self.rssi_list[-self.cutoff:-1], pen='r')
-                self.rssi_graph.plot([self.time], [self.rssi], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+                # self.rssi_graph.plot([self.time], [self.rssi], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
             # This line adds an X marking the last gps location
             self.position_graph.plot([self.lat], [self.long], pen=None, symbol='o', symbolBrush=(255, 0, 0), symbolSize=6.5)
 
@@ -259,6 +275,21 @@ class view(QWidget):
         self.timer.start(0)
 
         # print(len(self.altitude_list))
+
+    @pyqtSlot()
+    def on_click(self):
+        text_value = self.text_box.text()
+        try:
+            num_value = int(text_value)
+            num_value = abs(num_value)
+            if num_value < len(self.longitude_list):
+                self.cutoff = num_value
+            else:
+                self.cutoff = 0
+        except:
+            print('Data limit {} is invalid \nInput a number between 0 and {}'.format(text_value, len(self.longitude_list)))
+            self.cutoff = 0
+
 
     def update_plots(self):
         pass
