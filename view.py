@@ -41,6 +41,17 @@ class view(QWidget):
         self.goal_fps = 62  # Max 60
         self.bounds = 10
 
+        """Latest Telemetry Info"""
+        self.lat = 0
+        self.long = 0
+        self.time = 0
+        self.alt = 0
+        self.vel = 0
+        self.sat = 0
+        self.accel = 0
+        self.temp = 0
+        self.gyro_x = 0
+
         self.initUI()
 
     def initUI(self):
@@ -84,6 +95,9 @@ class view(QWidget):
         self.button = QPushButton('Update Cutoff', self)
         self.button.clicked.connect(self.on_click)
         self.button.setFixedWidth(150)
+        self.button_reset = QPushButton('RESET DATA', self)
+        self.button_reset.clicked.connect(self.on_click_reset)
+        self.button_reset.setFixedWidth(150)
 
         self.altitude_LCD = QLCDNumber(self)
         # self.temperature_LCD = QLCDNumber(self)
@@ -108,7 +122,6 @@ class view(QWidget):
         acceleration_label = QLabel("Current Acceleration")
         position_label = QLabel("Current Position")
 
-
         MRT_Logo = QPixmap('MRT-logo.png')
         smaller_MRT_Logo = MRT_Logo.scaledToHeight(100)
         logo_Lbl = QLabel(self)
@@ -116,12 +129,10 @@ class view(QWidget):
 
         """Layout Management"""
         hbox_Logo.addWidget(logo_Lbl)
+        hbox_Logo.addWidget(self.button_reset)
         hbox_Logo.addWidget(self.fps_label)
         hbox_Logo.addWidget(self.text_box)
         hbox_Logo.addWidget(self.button)
-
-
-
 
         vbox_inner_Graphs.addWidget(self.altitude_graph)
         # vbox_inner_Graphs.addWidget(self.temperature_graph)
@@ -146,14 +157,10 @@ class view(QWidget):
         hbox_position.addWidget(self.positionY_LCD)
         vbox_Indicators.addLayout(hbox_position)
 
-
-
         vbox_LogoAndGraphs.addLayout(hbox_Logo)
         vbox_LogoAndGraphs.addLayout(hbox_Graphs)
         hbox_Window.addLayout(vbox_LogoAndGraphs)
         hbox_Window.addLayout(vbox_Indicators)
-
-
 
         """ Telemetry values """
         self.time_list = []
@@ -177,17 +184,6 @@ class view(QWidget):
         self.setGeometry(100, 100, 1720, 968)
         self.setWindowTitle('MRT Ground Station')
         self.show()
-
-        """Latest Telemetry Info"""
-        self.lat = 0
-        self.long = 0
-        self.time = 0
-        self.alt = 0
-        self.vel = 0
-        self.sat = 0
-        self.accel = 0
-        self.temp = 0
-        self.gyro_x = 0
 
     @pyqtSlot(list)
     def append_data(self, telemetry_data):
@@ -311,6 +307,25 @@ class view(QWidget):
         except:
             print('Data limit {} is invalid \nInput a number between 0 and {}'.format(text_value, len(self.longitude_list)))
             self.cutoff = 0
+
+    @pyqtSlot()
+    def on_click_reset(self):
+        """ Telemetry values """
+        self.time_list = []
+        self.temperature_list = []
+        self.altitude_list = []
+        self.velocity_list = []
+        self.acceleration_list = []
+
+        """ GPS values """
+        self.latitude_list = []
+        self.longitude_list = []
+
+        """ Redundancy GPS values """
+        self.redundancy_latitude_list = []
+        self.redundancy_longitude_list = []
+
+        self.rssi_list = []
 
 
     def update_plots(self):
