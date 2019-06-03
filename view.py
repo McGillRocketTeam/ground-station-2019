@@ -143,14 +143,15 @@ class view(QWidget):
         self.redundancy_latitude_list = []
         self.redundancy_longitude_list = []
 
+        self.rssi_list = []
+
         """Build main window"""
         self.setLayout(hbox_Window)
-        self.setGeometry(100,100,1720,968)
+        self.setGeometry(100, 100, 1720, 968)
         self.setWindowTitle('MRT Ground Station')
         self.show()
 
-        self.rssi_list = []
-
+        """Latest Telemetry Info"""
         self.lat = 0
         self.long = 0
         self.time = 0
@@ -161,7 +162,7 @@ class view(QWidget):
         self.temp = 0
         self.gyro_x = 0
 
-        self.cutoff = 100
+        self.cutoff = -1
 
     @pyqtSlot(list)
     def append_data(self, telemetry_data):
@@ -226,8 +227,9 @@ class view(QWidget):
             self.velocity_graph.plot(self.time_list[-self.cutoff:-1], self.velocity_list[-self.cutoff:-1], pen='r')
             self.acceleration_graph.plot(self.time_list[-self.cutoff:-1], self.acceleration_list[-self.cutoff:-1], pen='r')
             self.position_graph.plot(self.latitude_list[-self.cutoff:-1], self.longitude_list[-self.cutoff:-1])
-            self.position_graph.plot(self.longitude_list[-2:-1], self.longitude_list[-2:-1], pen='r')
 
+            # This line adds an X marking the last gps location
+            self.position_graph.plot([self.lat], [self.long], pen=None, symbol='x', symbolBrush=(255, 0, 0))
 
         self.altitude_LCD.display(self.alt)
         self.temperature_LCD.display(self.temp)
@@ -242,7 +244,6 @@ class view(QWidget):
 
     def update_plots(self):
         pass
-
 
 
 if __name__ == '__main__':
