@@ -38,7 +38,7 @@ class view(QWidget):
         self.graph_update_count = 0
         self.graph_update_interval = 3  # Increase this value to speed up graphing
         self.optimize_fps = True
-        self.goal_fps = 62  # Max 60
+        self.goal_fps = 30  # Max 60
         self.bounds = 10
 
         """Latest Telemetry Info"""
@@ -51,6 +51,8 @@ class view(QWidget):
         self.accel = 0
         self.temp = 0
         self.gyro_x = 0
+
+        self.antenna_angle = [0, 0]
 
         self.initUI()
 
@@ -69,6 +71,10 @@ class view(QWidget):
         """Declare widgets"""
 
         self.fps_label = QLabel()
+        self.antenna_angle_label = QLabel()
+        # TODO: increase font size
+        # font = QLabel.font()
+        # self.antenna_angle_label.setFont(QFont=QFont(15))
 
         self.altitude_graph = pg.PlotWidget(title='Altitude', left='Height', bottom='Time')
         # self.temperature_graph = pg.PlotWidget(title='Temperature', left='Temperature', bottom='Time')
@@ -129,6 +135,7 @@ class view(QWidget):
 
         """Layout Management"""
         hbox_Logo.addWidget(logo_Lbl)
+        hbox_Logo.addWidget(self.antenna_angle_label)
         hbox_Logo.addWidget(self.button_reset)
         hbox_Logo.addWidget(self.fps_label)
         hbox_Logo.addWidget(self.text_box)
@@ -193,35 +200,38 @@ class view(QWidget):
         telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,RSSI,E\n
         backup GPS data: Slat,long,time,gps_alt,gps_speed,sat,RSSI,E\n
         """
-        try:
-            self.lat = float(telemetry_data[0])
-            self.long = float(telemetry_data[1])
-            self.time = float(telemetry_data[2])
-            self.alt = float(telemetry_data[3])
-            self.vel = float(telemetry_data[4])
-            self.sat = float(telemetry_data[5])
-            self.accel = 0
-            self.temp = 0
-            self.gyro_x = 0
-            self.rssi = 0
-            if len(telemetry_data) >= 9:
-                self.accel = float(telemetry_data[6])
-                self.temp = float(telemetry_data[7])
-                self.gyro_x = float(telemetry_data[8])
-                if len(telemetry_data) == 10:
-                    self.rssi = float(telemetry_data[9])
+        if len(telemetry_data) == 2:
+            self.antenna_angle = telemetry_data
+        else:
+            try:
+                self.lat = float(telemetry_data[0])
+                self.long = float(telemetry_data[1])
+                self.time = float(telemetry_data[2])
+                self.alt = float(telemetry_data[3])
+                self.vel = float(telemetry_data[4])
+                self.sat = float(telemetry_data[5])
+                self.accel = 0
+                self.temp = 0
+                self.gyro_x = 0
+                self.rssi = 0
+                if len(telemetry_data) >= 9:
+                    self.accel = float(telemetry_data[6])
+                    self.temp = float(telemetry_data[7])
+                    self.gyro_x = float(telemetry_data[8])
+                    if len(telemetry_data) == 10:
+                        self.rssi = float(telemetry_data[9])
+                        self.rssi_list.append(float(self.rssi))
+                elif len(telemetry_data) == 7:
+                    self.rssi = float(telemetry_data[6])
                     self.rssi_list.append(float(self.rssi))
-            elif len(telemetry_data) == 7:
-                self.rssi = float(telemetry_data[6])
-                self.rssi_list.append(float(self.rssi))
 
-            self.time_list.append(float(self.time))
-            self.altitude_list.append(float(self.alt))
-            self.temperature_list.append(float(self.temp))
-            self.velocity_list.append(float(self.vel))
-            self.acceleration_list.append(float(self.accel))
-        except:
-            print('INVALID DATA SENT TO VIEW')
+                self.time_list.append(float(self.time))
+                self.altitude_list.append(float(self.alt))
+                self.temperature_list.append(float(self.temp))
+                self.velocity_list.append(float(self.vel))
+                self.acceleration_list.append(float(self.accel))
+            except:
+                print('INVALID DATA SENT TO VIEW')
 
 
 
@@ -245,7 +255,7 @@ class view(QWidget):
         self.avgFps = self.avgFps * 0.8 + fps * 0.2
         self.fps_label.setText("Generating {0:3.2f} fps\nUpdate interval: {1}".format(self.avgFps, self.graph_update_interval))
         # self.fps_label.setText("Generating {0:3.2f} fps".format(self.avgFps))z
-
+        self.antenna_angle_label.setText('XY:{}\nZ:{}'.format(self.antenna_angle[0], self.antenna_angle[1]))
         if self.graph_update_count > self.graph_update_interval:
             self.graph_update_count = 0
             if self.optimize_fps:

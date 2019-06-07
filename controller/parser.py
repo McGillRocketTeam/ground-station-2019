@@ -46,6 +46,7 @@ class Parser(QObject):
         self.fuseefete = True  # Controls if we want to use fuseefete data
 
         self.data_storage = data_storage_in
+        self.antenna_angle = [0, 0]
 
         if not self.real_data:
             if self.full_telemetry:
@@ -186,7 +187,7 @@ class Parser(QObject):
                     time.sleep(0.002)
                     if self.full_telemetry:
                         telemetry_data = self.serial_telemetry.readline()
-                        print('parser(189): {}'.format(telemetry_data))
+                        print('parser(190): {}'.format(telemetry_data))
                     elif not self.full_telemetry:
                         gps_data = self.serial_gps.readline()
                     rssi_data = -12
@@ -208,10 +209,11 @@ class Parser(QObject):
                     to_send = result[1][0:-1]
                     # print('to_send: {}'.format(to_send))
                     if len(to_send) == 9:
-                        # time.sleep(0.0025)
+                        time.sleep(0.0025)
                         to_send[5] = int(to_send[5], 16)
                         to_send[2] = float(to_send[2]) + self.serial_telemetry.get_multiplier(self.full_telemetry)
                         # to_send[2] = float(to_send[2]) / 10000
+                        self.process_parsed(result[1], counter_antenna, True)
                         self.dataChanged.emit(to_send)
                 if result[0] == 200:  # Successfully parsed
                     # print(result[1])
@@ -221,12 +223,13 @@ class Parser(QObject):
                 """ Process gps data """
                 gps_result = self.split_array(gps_data, gps_data_length)
                 # self.log_parse(gps_result)
-                print('gps result (parser 220): {}'.format(gps_result))
+                # print('gps result (parser 220): {}'.format(gps_result))
                 if gps_result[0] == 200:  # Successfully parsed
                     self.process_parsed(gps_result[1], counter_antenna, False)
                     self.dataChanged.emit(gps_result[1])
-
             counter_antenna += 1
+            self.dataChanged.emit(self.antenna_angle)
+            print(self.antenna_angle)
             # yield 0.05
 
     def split_array(self, data, string_length):
@@ -268,13 +271,13 @@ class Parser(QObject):
             # except:
             #     print("Error plotting telemetry data")
 
-            if counter_antenna % 40 == 0:  # Is 1000 the best number for this?
+            if counter_antenna % 5 == 0:  # Is 1000 the best number for this?
                 try:
-                    antenna_angle = self.find_angle(data)
-                    print(str(antenna_angle) + '\n')
-                    self.data_storage.save_antenna_angles(antenna_angle, data[2])
+                    self.antenna_angle = self.find_angle(data)
+                    print(str(self.antenna_angle) + '\n')
+                    self.data_storage.save_antenna_angles(self.antenna_angle, data[2])
                     # self.plots.antennaAngle.configure(
-                    #    text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
+                    # text='ANTENNA ANGLE: '+str(self.antenna_angle[0])+' (xy), '+str(self.antenna_angle[1])+' (z)')
                 except:
                     print("Error calculating antenna angle")
         else:
