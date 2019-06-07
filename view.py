@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QLabel, QGridLayout, QLCDNumber, QLineEdit, QPushButton)
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer
 import pyqtgraph as pg
 import qdarkstyle
@@ -53,6 +53,8 @@ class view(QWidget):
         self.gyro_x = 0
 
         self.antenna_angle = [0, 0]
+        self.antenna_precision = 7
+        self.antenna_font_size = 32
 
         self.initUI()
 
@@ -73,7 +75,7 @@ class view(QWidget):
         self.fps_label = QLabel()
         self.antenna_angle_label = QLabel()
         # TODO: increase font size
-        # font = QLabel.font()
+        self.antenna_angle_label.setFont(QFont("Times", self.antenna_font_size, QFont.Bold))
         # self.antenna_angle_label.setFont(QFont=QFont(15))
 
         self.altitude_graph = pg.PlotWidget(title='Altitude', left='Height', bottom='Time')
@@ -255,7 +257,7 @@ class view(QWidget):
         self.avgFps = self.avgFps * 0.8 + fps * 0.2
         self.fps_label.setText("Generating {0:3.2f} fps\nUpdate interval: {1}".format(self.avgFps, self.graph_update_interval))
         # self.fps_label.setText("Generating {0:3.2f} fps".format(self.avgFps))z
-        self.antenna_angle_label.setText('XY:{}\nZ:{}'.format(self.antenna_angle[0], self.antenna_angle[1]))
+        self.antenna_angle_label.setText('XY:{}\nZ:{}'.format(str(self.antenna_angle[0])[0:self.antenna_precision], str(self.antenna_angle[1])[0:self.antenna_precision]))
         if self.graph_update_count > self.graph_update_interval:
             self.graph_update_count = 0
             if self.optimize_fps:
