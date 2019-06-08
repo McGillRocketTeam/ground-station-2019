@@ -254,60 +254,64 @@ class view(QWidget):
     @pyqtSlot()
     def plot_data(self):
 
-        now = pg.ptime.time()
-        fps = 1.0 / (now - self.lastUpdate)
-        self.lastUpdate = now
-        self.avgFps = self.avgFps * 0.8 + fps * 0.2
-        self.fps_label.setText("Generating {0:3.2f} fps\nUpdate interval: {1}".format(self.avgFps, self.graph_update_interval))
-        # self.fps_label.setText("Generating {0:3.2f} fps".format(self.avgFps))z
-        self.antenna_angle_label.setText('XY:{}\nZ:{}'.format(str(self.antenna_angle[0])[0:self.antenna_precision], str(self.antenna_angle[1])[0:self.antenna_precision]))
-        if self.graph_update_count > self.graph_update_interval:
-            self.graph_update_count = 0
-            if self.optimize_fps:
-                if self.avgFps < (self.goal_fps-self.bounds):
-                    self.graph_update_interval += 1
-                elif self.avgFps > (self.goal_fps+self.bounds):
-                    self.graph_update_interval -= 1
+        try:
+
+            now = pg.ptime.time()
+            fps = 1.0 / (now - self.lastUpdate)
+            self.lastUpdate = now
+            self.avgFps = self.avgFps * 0.8 + fps * 0.2
+            self.fps_label.setText("Generating {0:3.2f} fps\nUpdate interval: {1}".format(self.avgFps, self.graph_update_interval))
+            # self.fps_label.setText("Generating {0:3.2f} fps".format(self.avgFps))z
+            self.antenna_angle_label.setText('XY:{}\nZ:{}'.format(str(self.antenna_angle[0])[0:self.antenna_precision], str(self.antenna_angle[1])[0:self.antenna_precision]))
+            if self.graph_update_count > self.graph_update_interval:
+                self.graph_update_count = 0
+                if self.optimize_fps:
+                    if self.avgFps < (self.goal_fps-self.bounds):
+                        self.graph_update_interval += 1
+                    elif self.avgFps > (self.goal_fps+self.bounds):
+                        self.graph_update_interval -= 1
 
 
-            self.altitude_graph.clear()
-            # self.temperature_graph.clear()
-            self.rssi_graph.clear()
-            self.velocity_graph.clear()
-            self.acceleration_graph.clear()
-            self.position_graph.clear()
+                self.altitude_graph.clear()
+                # self.temperature_graph.clear()
+                self.rssi_graph.clear()
+                self.velocity_graph.clear()
+                self.acceleration_graph.clear()
+                self.position_graph.clear()
 
-            if len(self.altitude_list) > self.cutoff+1:
-                self.altitude_graph.plot(self.time_list[-self.cutoff:-1], self.altitude_list[-self.cutoff:-1], pen='r')
-                # self.temperature_graph.plot(self.time_list[-self.cutoff:-1], self.temperature_list[-self.cutoff:-1], pen='r')
-                self.velocity_graph.plot(self.time_list[-self.cutoff:-1], self.velocity_list[-self.cutoff:-1], pen='r')
-                self.acceleration_graph.plot(self.time_list[-self.cutoff:-1], self.acceleration_list[-self.cutoff:-1], pen='r')
+                if len(self.altitude_list) > self.cutoff+1:
+                    self.altitude_graph.plot(self.time_list[-self.cutoff:-1], self.altitude_list[-self.cutoff:-1], pen='r')
+                    # self.temperature_graph.plot(self.time_list[-self.cutoff:-1], self.temperature_list[-self.cutoff:-1], pen='r')
+                    self.velocity_graph.plot(self.time_list[-self.cutoff:-1], self.velocity_list[-self.cutoff:-1], pen='r')
+                    self.acceleration_graph.plot(self.time_list[-self.cutoff:-1], self.acceleration_list[-self.cutoff:-1], pen='r')
 
-                self.position_graph.plot(self.latitude_list[-self.cutoff:-1], self.longitude_list[-self.cutoff:-1])
-                if self.end_dots:
-                    self.velocity_graph.plot([self.time], [self.vel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
-                    self.acceleration_graph.plot([self.time], [self.accel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
-                    self.altitude_graph.plot([self.time], [self.alt], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
-                if len(self.time_list) == len(self.rssi_list):
-                    self.rssi_graph.plot(self.time_list[-self.cutoff:-1], self.rssi_list[-self.cutoff:-1], pen='r')
+                    self.position_graph.plot(self.latitude_list[-self.cutoff:-1], self.longitude_list[-self.cutoff:-1])
                     if self.end_dots:
-                        self.rssi_graph.plot([self.time], [self.rssi], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
-                # This line adds an X marking the last gps location
-                self.position_graph.plot([self.lat], [self.long], pen=None, symbol='o', symbolBrush=(255, 0, 0), symbolSize=6.5)
-        else:
-            self.graph_update_count = self.graph_update_count + 1
+                        self.velocity_graph.plot([self.time], [self.vel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+                        self.acceleration_graph.plot([self.time], [self.accel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+                        self.altitude_graph.plot([self.time], [self.alt], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+                    if len(self.time_list) == len(self.rssi_list):
+                        self.rssi_graph.plot(self.time_list[-self.cutoff:-1], self.rssi_list[-self.cutoff:-1], pen='r')
+                        if self.end_dots:
+                            self.rssi_graph.plot([self.time], [self.rssi], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+                    # This line adds an X marking the last gps location
+                    self.position_graph.plot([self.lat], [self.long], pen=None, symbol='o', symbolBrush=(255, 0, 0), symbolSize=6.5)
+            else:
+                self.graph_update_count = self.graph_update_count + 1
 
-        self.altitude_LCD.display(self.alt)
-        # self.temperature_LCD.display(self.temp)
-        self.rssi_LCD.display(self.rssi)
-        self.velocity_LCD.display(self.vel)
-        self.acceleration_LCD.display(self.accel)
-        self.positionX_LCD.display(self.lat)
-        self.positionY_LCD.display(self.long)
+            self.altitude_LCD.display(self.alt)
+            # self.temperature_LCD.display(self.temp)
+            self.rssi_LCD.display(self.rssi)
+            self.velocity_LCD.display(self.vel)
+            self.acceleration_LCD.display(self.accel)
+            self.positionX_LCD.display(self.lat)
+            self.positionY_LCD.display(self.long)
 
-        self.timer.start(0)
+            self.timer.start(0)
 
-        # print(len(self.altitude_list))
+            # print(len(self.altitude_list))
+
+        except: print("Problem with graphing")
 
     @pyqtSlot()
     def on_click(self):
