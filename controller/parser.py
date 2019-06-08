@@ -1,30 +1,33 @@
-import sys
 import time
+import sys
+
+import model.datastorage as data_storage
+import view as view
 
 import qdarkstyle
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QThread, QObject, pyqtSignal, pyqtSlot
 
-import model.datastorage as data_storage
-import view as view
+import controller.serial_sim as serial_sim
 import serial
 from random import randint
 import random
 import re
 import datetime
 import math
-
 # from guiLoop import guiLoop
 
 """
-data format: Slat,long,alt,time,temp,vel,acc,sat,E
-backup GPS data: lat, long, alt, sat#
+telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,RSSI,E\n
+backup GPS data: Slat,long,time,gps_alt,gps_speed,sat,RSSI,E\n
 """
-telemetry_data_length = 8  # Current length of telemetry data string
-gps_data_length = 5  # Current length of gps data string
+telemetry_data_length = 10  # Length of big telemetry data string
+# TODO: change back to 9 if we remove RSSI
+gps_data_length = 6  # Length of gps data string
+
 counter_gps = 0  # Counter to generate decent GPS data for test only
-ground_lat = 0  # Ground station latitude
-ground_long = 0  # Ground station longitude
+ground_lat = 46.003684  # Ground station latitude
+ground_long = -72.731535  # Ground station longitude
 ground_alt = 0  # Ground station altitude
 
 
@@ -35,251 +38,285 @@ class Parser(QObject):
 
     def __init__(self, data_storage_in):
         super().__init__()
-        self.data_storage = data_storage_in
 
-        # TODO Add port setup for GPS
+        self.full_telemetry = True
+        self.port_from_file = True  # Controls if the port is read from a file
+        self.real_data = False  # Controls if data is simulated or from actual serial reader
+        self.replot_data = False  # Controls if we want to use caladan data
+        self.fuseefete = True  # Controls if we want to use fuseefete data
+
+        self.data_storage = data_storage_in
+        self.antenna_angle = [0, 0]
+
+        if not self.real_data:
+            if self.full_telemetry:
+                self.serial_telemetry = serial_sim.SerialSim(True, self.fuseefete)
+            else:
+                self.serial_gps = serial_sim.SerialSim(False, self.fuseefete)
+            if self.fuseefete:
+                self.telemetry_data_length = 8
+        if self.real_data:
+            self.port_full = ''
+            self.port_gps = ''
+        if self.port_from_file and self.real_data:
+            if self.full_telemetry:
+                f = open("./storage/serial/full_telemetery.txt", "r")
+                self.port_full = f.readline()
+                if len(self.port_full) == 0:
+                    print('Error reading port')
+            else:
+                f = open("./storage/serial/gps_backup.txt", "r")
+                self.port_gps = f.readline()
+                if len(self.port_gps) == 0:
+                    print('Error reading port')
+            f.close()
+
+
+
         # TODO Automated port check setup
 
-        # self.port = "COM5"
         # ls /dev/tty.*
         # use above to find port of arduino on mac
-        # self.port = "/dev/tty.usbserial-A104IBE7"
-        # self.port = "/dev/tty.usbmodem14201"
-        self.port = "/dev/tty.usbmodem14101"
 
-        self.port2 = "/dev/tty.usbmodem14101"
-        self.baud = 9600
+        self.port = "/dev/tty.usbserial-00002414" # number 5 actual telemetry
+        self.port2 = "/dev/tty.usbserial-00002114" # number 3
+        self.port3 = "/dev/cu.usbmodem49371501" # number 5 rssi
+        self.port4 = "/dev/tty.usbmodem142201" #number 3 rssi
+        self.baud = 19200
+        self.baud2 = 9600
+        self.baud_combo = 38400
+        # self.baud_combo = 19200
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
-        self.timeout = 3  # sec
-        # setup for telemetry serial
-        # ser = serial.Serial(self.port, self.baud, self.byte, self.parity, self.stopbits)
-        # self.serial_telemetry = ser
-        # if not ser.isOpen():
-        #     ser.open()
+        self.timeout = 0.2
+
+        # # # Setup for telemetry serial
+        if self.real_data and self.full_telemetry:
+            ser = serial.Serial(self.port_full, self.baud_combo, self.byte, self.parity, self.stopbits, self.timeout)
+            self.serial_telemetry = ser
+            if not ser.isOpen():
+                ser.open()
+            else:
+                pass
+
+        # Setup for gps serial
+        if self.real_data and not self.full_telemetry:
+            ser2 = serial.Serial(self.port_gps, self.baud_combo, self.byte, self.parity, self.stopbits, self.timeout)
+            self.serial_gps = ser2
+            if not ser2.isOpen():
+                ser2.open()
+            else:
+                pass
+        if self.real_data:
+            self.current_ser = self.serial_telemetry if self.full_telemetry else self.serial_gps
+        else:
+            self.current_ser = None
+
+        # Setup for RSSI serial
+        # ser3 = serial.Serial(self.port3, self.baud2, self.byte, self.parity, self.stopbits, self.timeout)
+        # ser3 = serial.Serial(self.port3, self.baud_combo, self.byte, self.parity, self.stopbits, self.timeout)
+        # self.serial_rssi = ser3
+        # if not ser3.isOpen():
+        #     ser3.open()
         # else:
         #     pass
 
-        # Setup for gps serial
-        # ser2 = serial.Serial(self.port2, self.baud, self.byte, self.parity, self.stopbits)
-        # self.serial_gps = ser2
-        # if not ser2.isOpen():
-        #     ser2.open()
+        # while True:
+        #     x = self.current_ser.readline().decode('UTF-8')
+        #     print(x)
+
+        # ser4 = serial.Serial(self.port4, self.baud2, self.byte, self.parity, self.stopbits, self.timeout)
+        # self.serial_rssi_gps = ser4
+        # if not ser4.isOpen():
+        #     ser4.open()
         # else:
         #     pass
+
 
     # @guiLoop
     @pyqtSlot()
     def parse(self):
         """
-        Contains the main while loop is used to repeatedly parse the received data
-        :return: no return data
+        Contains the main while loop used to repeatedly parse the received data
         """
         global start_time
         start_time = round(datetime.datetime.utcnow().timestamp())
 
         telemetry_data = ''
         gps_data = ''
+        rssi_data = ''
+        rssi_data_gps = ''
         counter_antenna = 0
         loop_control = True
 
         while loop_control:
-            # time.sleep(0.5)
 
-            real_data = False  # Controls if data is simulated or from actual serial reader
-            caladan_data = False  # Controls if we want to use caladan data
-            if real_data:
-                # telemetry_data += self.serial_telemetry.read(size=1000).decode('utf-8')
-                # gps_data += self.serial_gps.read(size=1000).decode('utf-8')
-
-                print(telemetry_data)
-                print(gps_data)
+            if self.real_data:
+                failure = False
+                if self.full_telemetry:
+                    try:
+                        telemetry_data = self.serial_telemetry.readline().decode('utf-8')
+                        print(telemetry_data)
+                    except:
+                        failure = True
+                elif not self.full_telemetry:
+                    try:
+                        gps_data = self.serial_gps.readline().decode('utf-8')
+                    except:
+                        failure = True
+                # try:
+                #     rssi_data = self.serial_rssi.readline().decode('utf-8')
+                #     print('rssi: {}'.format(rssi_data))
+                # except:
+                #     failure = True
+                #     pass
+                # try:
+                #     rssi_data_gps = self.serial_rssi_gps.readline().decode('utf-8')
+                #     print('rssi GPS: {}'.format(rssi_data_gps))
+                # except:
+                #     failure = True
+                #     pass
+                if failure:
+                    continue
             else:  # Fake data
-                if caladan_data:
-                    self.read_from_file()
+                if self.replot_data:
+                    self.replot_flight()
+                    break
                 else:
-                    telemetry_data += self.simulate_telemetry()
-                    gps_data += self.simulate_gps()
-                    # print(telemetry_data)
-                    # print(gps_data)
+                    time.sleep(0.002)
+                    if self.full_telemetry:
+                        telemetry_data = self.serial_telemetry.readline()
+                        print('parser(190): {}'.format(telemetry_data))
+                    elif not self.full_telemetry:
+                        gps_data = self.serial_gps.readline()
+                    rssi_data = -12
+                    rssi_data_gps = -120
 
             """ Save raw data to files """
-            self.data_storage.save_raw_data(telemetry_data)
-            # self.data_storage.save_raw_data(gps_data)
+            if self.full_telemetry:
+                self.data_storage.save_raw_telemetry_data(telemetry_data)
+            else:
+                self.data_storage.save_raw_gps_data(gps_data)
 
             """ Process telemetry data """
-            # processing for full telemetry data:
-            result = self.parse_full((telemetry_data, telemetry_data_length))
-            # print(result)
-            return_data = self.process_parsed((result, (200, 300), counter_antenna, telemetry_data, True, True))
-            telemetry_data = return_data[0]
-            counter_antenna = return_data[1]
-
-            """ Process gps data """
-            # processing for gps:
-            # gps_result = self.parse_full((gps_data, gps_data_length))
-            # print('gps::')
-            # print(gps_result)
-            # return_gps_data = self.process_parsed((gps_result,(200,300),counter_antenna,gps_data,False, False))
-            # gps_data = return_gps_data[0]
-
+            if self.full_telemetry:
+                result = self.split_array(telemetry_data, telemetry_data_length)
+                # self.log_parse(result)
+                # print(result)
+                if self.fuseefete and result[0] == 400:
+                    result[1][0] = result[1][0].strip('S')
+                    to_send = result[1][0:-1]
+                    # print('to_send: {}'.format(to_send))
+                    if len(to_send) == 9:
+                        time.sleep(0.0025)
+                        to_send[5] = int(to_send[5], 16)
+                        to_send[2] = float(to_send[2]) + self.serial_telemetry.get_multiplier(self.full_telemetry)
+                        # to_send[2] = float(to_send[2]) / 10000
+                        self.process_parsed(result[1], counter_antenna, True)
+                        self.dataChanged.emit(to_send)
+                if result[0] == 200:  # Successfully parsed
+                    # print(result[1])
+                    self.process_parsed(result[1], counter_antenna, True)
+                    self.dataChanged.emit(result[1])
+            else:
+                """ Process gps data """
+                gps_result = self.split_array(gps_data, gps_data_length)
+                # self.log_parse(gps_result)
+                # print('gps result (parser 220): {}'.format(gps_result))
+                if gps_result[0] == 200:  # Successfully parsed
+                    self.process_parsed(gps_result[1], counter_antenna, False)
+                    self.dataChanged.emit(gps_result[1])
+            counter_antenna += 1
+            self.dataChanged.emit(self.antenna_angle)
+            print(self.antenna_angle)
             # yield 0.05
 
-    def process_parsed(self, data):
+    def split_array(self, data, string_length):
         """
-        errorCodeTuple: (200,300)
-        updateantenna: true if we want to update antenna values
-        full_data: true if we want to process the full data
-        :param data: (result,(errorCodesTuple), counter_antenna, telemetry_data, updateantenna, full_data
-        :return: new telemetry_data, new counter_antenna
+        :param data: datastring to split
+        :param string_length: length of string (telemetry or gps)
+        :return:
         """
-
-        result = data[0]
-        e1 = data[1][0]
-        e2 = data[1][1]
-        counter_antenna = data[2]
-        t_data = data[3]
-        update_antenna = data[4]
-        full_data = data[5]
-        if result[0] == e1 or result[0] == e2:
-            for data_chunk in result[1]:
-                # print(data_chunk)
-                if full_data:
-                    gps_data_chunk = [data_chunk[0], data_chunk[1], data_chunk[7]]
-
-                    """ Save telemetry data"""
-                    self.data_storage.save_telemetry_data(data_chunk)
-                    self.data_storage.save_gps_data(gps_data_chunk)
-
-                    self.dataChanged.emit(data_chunk)
-
-
-                    # """ Plot telemetry data and update GUI """
-
-                    # try:
-                    #     self.plots.plot_telemetry_data(data_chunk)
-                    # except:
-                    #     print("Error plotting telemetry data")
-                    # try:
-                    #     self.plots.plot_gps_data(data_chunk)
-                    # except:
-                    #     print("Error plotting GPS data")
-                    # try:
-                    #     self.plots.update_plots()
-                    # except:
-                    #     print("Error updating plots")
-
-                    if update_antenna:
-                        counter_antenna += 1
-
-                    # if counter_antenna % 2 == 0 and update_antenna:  # Is 1000 the best number for this?
-                    #     antenna_angle = self.find_angle(gps_data_chunk)
-                    #     self.plots.antennaAngle.configure(
-                    #         text='ANTENNA ANGLE: ' + str(antenna_angle[0]) + ' (xy), ' + str(antenna_angle[1]) + ' (z)')
-
-                    if result[0] == e1:
-                        t_data = result[2]
-                    elif result[0] == e2:  # empty
-                        t_data = ''
-                else:
-                    try:
-                        self.data_storage.save_gps_data(data_chunk)
-                    except:
-                        print('Error saving parsed gps backup data')
-        else:
-            # TODO: log errors
-            pass
-        return t_data, counter_antenna
-
-    def parse_full(self, data):
-        """
-        :param data: the string of text that should be parsed in a tuple with length of datastring
-        :return: a tuple containing (status, listOfParsedData, remainingString)
-        status: status code: 200 means parse was successful
-        listOfParsedData: a list containing lists of length 8 (the telemetry data)
-        remainingString: the data that was not able to be parsed at the end of the data string
-        """
-        status = 500  # error codes or correlation id
         """
         Error Codes: 
-        500 error occured
-        200 data was successfully parsed, remainingString is non-empty
-        300 data was successfully parsed, remaining string is empty
+        500 error converting occured
+        200 data was successfully parsed
         400 no data was parsed from the string
         """
-        data_string = data[0]
-        data_length = data[1]
-        parse_helped_data = self.parse_helper((data_string,data_length))
+        split_data = re.split(',', data)
 
-        if parse_helped_data[0] == -1:
-            data_list = []
-            status = 400
-        else:
-            data_list = [parse_helped_data[0][0:data_length]]
+        if not len(split_data) == string_length + 1:  # Invalid array length
+            return 400, split_data
 
-        while len(re.split(r',',parse_helped_data[1])) > (data_length+1):
-            parse_helped_data = self.parse_helper((parse_helped_data[1],data_length))
-            if parse_helped_data[0] == -1:
-                break
-            data_list.append(parse_helped_data[0][0:data_length])
-            pass
-        if len(data_list) > 0:  # TODO: implement parsing logic here
-            if len(parse_helped_data) == 1:
-                return 300, data_list, ''
-            else:
-                return 200, data_list, parse_helped_data[1]
-        return status,
+        split_data[0] = split_data[0][1:]  # Remove S from datastring
+        split_data = split_data[0:-1]  # Remove E from datastring
+        try:
+            self.convert_string_list_float(split_data)  # Try converting to values to float right away to catch errors
+            return 200, split_data
+        except:
+            return 500, split_data
 
-
-    def parse_helper(self, data):
+    def process_parsed(self, data, counter_antenna, is_telemetry):
         """
-        this function takes in a string of any length, and returns a tuple,
-        where slot 0 is the current array of separated values from one telemetry reading
-        if slot 0 contains the int -1, then there was no data to be parsed
-        slot 1 is the remaining string
-        :param data: tuple(actual_data,string_length)
-        actual_data is the string to be parsed
-        string_length is the number of values separated by commas in the string
-        :return: tuple(array, string)
-        array is the list of values that were separated by commas in the input string
-        string is the remaining string that was not able to be parsed
+        :param data: parsed flight data
+        :param counter_antenna: current counter for antenna updating
+        :param is_telemetry: indicates if dealing with telemetry string, or with gps redundancy string
         """
-        # split the data tuple into the actual data, and the length of the data string
-        actual_data = data[0]
-        string_length = data[1]
-        # Takes the first set of data from the data string, or removes the garbage from the front of it
-        split_data = re.split(r"S", actual_data, 1)
-        remaining_data = ''
-        if len(split_data) == 2:
-            remaining_data = split_data[1]
-        else:
-            split_try = re.split(r",", split_data[0])
-            if len(split_try) == (string_length+1):
-                return split_try, ""
-            else:
-                return -1, split_data[0]
-        parsed = re.split(r",", split_data[0])
-        while len(parsed) != (string_length+1):
-            split_data = re.split(r"S", remaining_data, 1)
-            parsed = re.split(r",", split_data[0])
-            if len(split_data) == 1:
-                # remaining_data = ''
-                return (-1, remaining_data)
-                # if len(splitData) != (stringLength+1):
-                #     return (-1, remaining_data)
-                # else:
-                #     return (parsed,remaining_data)
-                # return ([],actualData)
-            else:
-                remaining_data = split_data[1]
-            #TODO: fix: infinite loop when string ends with partial data piece
+        """ Save and plot data"""
+        if is_telemetry:
+            self.data_storage.save_telemetry_data(data)
+            # try:
+            #     self.plots.plot_telemetry_data(data)
+            # except:
+            #     print("Error plotting telemetry data")
 
-            # if len(re.split(r',',remaining_data)) < 12:
-            #     break
-            # print(parsed)
-            # print(remaining_data)
-        return parsed, remaining_data
+            if counter_antenna % 5 == 0:  # Is 1000 the best number for this?
+                try:
+                    self.antenna_angle = self.find_angle(data)
+                    print(str(self.antenna_angle) + '\n')
+                    self.data_storage.save_antenna_angles(self.antenna_angle, data[2])
+                    # self.plots.antennaAngle.configure(
+                    # text='ANTENNA ANGLE: '+str(self.antenna_angle[0])+' (xy), '+str(self.antenna_angle[1])+' (z)')
+                except:
+                    print("Error calculating antenna angle")
+        else:
+            self.data_storage.save_gps_data(data)
+            # try:
+            #     self.plots.plot_gps_data(data)
+            # except:
+            #     print("Error plotting GPS data")
+        # try:
+        #     self.plots.update_plots()
+        # except:
+        #     print("Error updating plots")
+
+    def convert_string_list_float(self, data):
+        if len(data) == telemetry_data_length:
+            data[5] = int(data[5], 16)
+        listout = [float(x) for x in data]
+        return listout
+
+    def replot_flight(self):
+        """ Read from a previous flight """
+        file = open("../storage/telemetry/2019-05-07-20-06-29_data_telemetry.csv", "r")  # Open data file for plotting
+        pull_data = file.read()
+        data_list = pull_data.split('\n')
+        first_line = True
+        for eachLine in data_list:
+            if first_line:
+                first_line = False  # Don't read data if first line, since it is the header
+            elif len(eachLine) > 1:
+                #saved_time, lat, long, time, alt, vel, sat, acc, temp, gyro_x = eachLine.split(',')  # Split each line by comma
+                saved_time, lat, long, alt, time, temp, vel, acc, sat = eachLine.split(',')
+                #telemetry_data = [lat, long, time, alt, vel, sat, acc, temp, gyro_x]
+                telemetry_data = [lat, long, time, alt, vel, sat, acc, temp, temp]
+                try:
+                    self.plots.plot_telemetry_data(telemetry_data)
+                except:
+                    print("Error plotting telemetry data")
+                #yield 0.05
+        file.close()
 
     def find_angle(self, data):
         '''calculate antenna direction given rocket coordinates and ground station coordinates'''
@@ -289,7 +326,7 @@ class Parser(QObject):
         ground_y = ground_long
         rocket_x = float(data[0])
         rocket_y = float(data[1])
-        rocket_alt = float(data[2])
+        rocket_alt = float(data[3])
         # Covert to decimal degrees
         '''rocket_x = self.convert_DMS_to_DD(rocket_x)
         rocket_y = self.convert_DMS_to_DD(rocket_y)
@@ -347,8 +384,9 @@ class Parser(QObject):
         random_data = self.generate_random_data_array()
 
         return 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
-               str(random_data[3]) + ',' + str(random_data[4]) + ',' + str(random_data[5]) + ',' + \
-               str(random_data[6]) + ',' + str(random_data[7]) + ',E'
+               str(random_data[3]) + ',' + str(random_data[4]) + ',' + str('D') + ',' + \
+               str(random_data[6]) + ',' + str(random_data[7]) + ',' + str(random_data[8]) +\
+               ',' + str(random_data[5]) + ',E\n'
 
     def simulate_gps(self):
         """
@@ -357,7 +395,7 @@ class Parser(QObject):
         random_data = self.generate_random_data_array()
 
         string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
-                 str(random_data[3]) + ',' + str(random_data[4]) + ',E'
+                 str(random_data[3]) + ',' + str(random_data[4]) + ',' + str('E') + ',E\n'
         return string
 
     def generate_random_data_array(self):
@@ -373,82 +411,38 @@ class Parser(QObject):
 
         """ Create decent GPS coordinates for test """
         counter_gps += 0.1
-        lat = (((32 + (counter_gps ** 2) * 0.001) % 84) + 80) % 84
+        lat = 32 + (counter_gps ** 2) * 0.001
         long = -107 + (counter_gps ** 2) ** 0.002
 
         """ Generate random telemetry data """
         alt = randint(min_random, max_random) + random.random()
         temp = randint(-100, max_random) + random.random()
         vel = randint(min_random, max_random) + random.random()
+        gyro_x = randint(min_random, max_random) + random.random()
         acc = randint(min_random, max_random) + random.random()
         sat = randint(min_random, max_random) + random.random()
         global start_time
         current_time = round(datetime.datetime.utcnow().timestamp()) - start_time
-
-        return [lat, long, alt, current_time, temp, vel, acc, sat]
-
-    def read_from_file(self):
-        """ Read from caladan sim test file """
-        file = open("../tests/CaladanSimData/CALADAN_DATA_GROUND_STATION.csv", "r")  # Open data file for plotting
-        pull_data = file.read()
-        data_list = pull_data.split('\n')
-        first_line = True
-        for eachLine in data_list:
-            if first_line:
-                first_line = False  # Don't read data if first line, since it is the header
-            elif len(eachLine) > 1:
-                lat, long, alt, time, temperature, altitude, velocity, acceleration, sat, vv, va, m, t, a = eachLine.split(
-                    ',')  # Split each line by comma
-                telemetry_data = [lat, long, alt, time, temperature, altitude, velocity, acceleration, sat]
-                data_gps = [lat, long, sat]
-                try:
-                    self.plots.plot_telemetry_data(telemetry_data)
-                except:
-                    print("Error plotting telemetry data")
-                # try:
-                #     self.plots.plot_gps_data(data_gps)
-                # except:
-                #     print("Error plotting gps data")
-                try:
-                    self.plots.update_plots()
-                except:
-                    print("Error updating plots")
-
-        file.close()
-
-    def test_serial_missingdata(self):
-        global start_time
-        start_time = round(datetime.datetime.utcnow().timestamp())
-        time.sleep(2)
-        random_data = self.generate_random_data_array()
-
-        string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
-               str(random_data[3]) + ',' + ',' + str(random_data[5]) + ',' + \
-               str(random_data[6]) + ',' + str(random_data[7]) + ',E'
-        p = self.parse_full((string, telemetry_data_length))
-        print(p)
-        self.data_storage.save_telemetry_data(p[1])
+        return [lat, long, current_time, alt, vel, sat, acc, temp, gyro_x]
 
     def log_parse(self, data):
-        print(data, file=open("../storage/parselog.txt", "a"))
         # f = open("../storage/parselog.txt", "a")
-        # f.write(data)
+        # f.write(data[0])
+        # f.write(data[1])
         # f.close()
         pass
 
 
-# def main():
-#     data_store = data_storage.DataStorage()
-#
-#     app = QApplication(sys.argv)
-#     app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
-#     plots_instance = view.view()
-#
-#     parser = Parser(data_store, plots_instance)
-#     parser.parse()
-#
-#     sys.exit(app.exec_())
+def main():
+    data_store = data_storage.DataStorage()
+    # app = QApplication(sys.argv)
+    # app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+
+    parser = Parser(data_store)
+    parser.parse()
+
+    #sys.exit(app.exec_())
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()

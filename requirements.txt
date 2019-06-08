@@ -1,3 +1,8 @@
-pyserial
-matplotlib
-utm
+numpy==1.16.4
+PyQt5==5.12.2
+PyQt5-sip==4.19.17
+pyqtgraph==0.10.0
+pyserial==3.4
+QDarkStyle==2.6.8
+utm==0.4.2
+virtualenv==16.6.0
