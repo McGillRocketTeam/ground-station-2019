@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QLabel, QGridLayout, QLCDNumber, QLineEdit, QPushButton)
+from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QLabel, QGridLayout, QLCDNumber, QLineEdit, QPushButton, QCheckBox)
 from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer
 import pyqtgraph as pg
@@ -10,6 +10,7 @@ from controller import parser
 from model import datastorage
 
 show_graphs = True  # Show graph toggle option
+LCD_HEIGHT = 40
 
 class view(QWidget):
 
@@ -34,6 +35,9 @@ class view(QWidget):
         self.lastUpdate = pg.ptime.time()
         self.avgFps = 0.0
         self.cutoff = 0
+
+        self.scroll_status = True
+        self.plotting_status = True
 
         """Optimization settings"""
         self.end_dots = True
@@ -66,11 +70,13 @@ class view(QWidget):
         hbox_Window = QHBoxLayout(self)
         vbox_LogoAndGraphs = QVBoxLayout()
 
-        hbox_Logo = QHBoxLayout()
+        vbox_Logo = QVBoxLayout()
+        hbox_Banner = QHBoxLayout()
         hbox_Graphs = QHBoxLayout()
         vbox_inner_Graphs = QVBoxLayout() # vbox for non-position graphs
         vbox_Indicators = QVBoxLayout()
         hbox_position = QHBoxLayout()
+        vbox_Buttons = QVBoxLayout()
 
         """Declare widgets"""
 
@@ -101,13 +107,22 @@ class view(QWidget):
         # self.altitude_graph.setLimits(xMax=100)
 
         self.text_box = QLineEdit(self)
-        self.text_box.setFixedWidth(200)
+        self.text_box.setFixedWidth(250)
         self.button = QPushButton('Update Cutoff', self)
         self.button.clicked.connect(self.on_click)
-        self.button.setFixedWidth(150)
+        self.button.setFixedWidth(250)
         self.button_reset = QPushButton('RESET DATA', self)
         self.button_reset.clicked.connect(self.on_click_reset)
-        self.button_reset.setFixedWidth(150)
+        self.button_reset.setFixedWidth(250)
+        self.button_reset.setStyleSheet("background-color: red")
+
+        self.scroll_checkbox = QCheckBox("Toggle Scrolling", self)
+        self.scroll_checkbox.setChecked(self.scroll_status)
+        self.scroll_checkbox.stateChanged.connect(self.on_click_scrolling)
+
+        self.plot_checkbox = QCheckBox("Toggle Plotting", self)
+        self.plot_checkbox.setChecked(self.plotting_status)
+        self.plot_checkbox.stateChanged.connect(self.on_click_plotting)
 
         self.altitude_LCD = QLCDNumber(self)
         # self.temperature_LCD = QLCDNumber(self)
@@ -116,6 +131,13 @@ class view(QWidget):
         self.acceleration_LCD = QLCDNumber(self)
         self.positionX_LCD = QLCDNumber(self)
         self.positionY_LCD = QLCDNumber(self)
+
+        self.altitude_LCD.setFixedHeight(LCD_HEIGHT)
+        self.rssi_LCD.setFixedHeight(LCD_HEIGHT)
+        self.velocity_LCD.setFixedHeight(LCD_HEIGHT)
+        self.acceleration_LCD.setFixedHeight(LCD_HEIGHT)
+        self.positionX_LCD.setFixedHeight(LCD_HEIGHT)
+        self.positionY_LCD.setFixedHeight(LCD_HEIGHT)
 
         self.altitude_LCD.setDigitCount(9)
         # self.temperature_LCD.setDigitCount(9)
@@ -137,13 +159,17 @@ class view(QWidget):
         logo_Lbl = QLabel(self)
         logo_Lbl.setPixmap(smaller_MRT_Logo)
 
+        MRT_label = QLabel("McGill Rocket Team Ground Station")
+        MRT_label.setFont(QFont("Times", 30, QFont.Bold))
+
         """Layout Management"""
-        hbox_Logo.addWidget(logo_Lbl)
-        hbox_Logo.addWidget(self.antenna_angle_label)
-        hbox_Logo.addWidget(self.button_reset)
-        hbox_Logo.addWidget(self.fps_label)
-        hbox_Logo.addWidget(self.text_box)
-        hbox_Logo.addWidget(self.button)
+        vbox_Logo.addWidget(self.fps_label)
+        vbox_Logo.addLayout(hbox_Banner)
+        hbox_Banner.addWidget(logo_Lbl)
+        hbox_Banner.addWidget(MRT_label)
+        hbox_Banner.addStretch(1)
+
+
 
         vbox_inner_Graphs.addWidget(self.altitude_graph)
         # vbox_inner_Graphs.addWidget(self.temperature_graph)
@@ -167,8 +193,16 @@ class view(QWidget):
         hbox_position.addWidget(self.positionX_LCD)
         hbox_position.addWidget(self.positionY_LCD)
         vbox_Indicators.addLayout(hbox_position)
+        vbox_Indicators.addLayout(vbox_Buttons)
+        vbox_Buttons.addWidget(self.antenna_angle_label)
+        vbox_Buttons.addWidget(self.text_box)
+        vbox_Buttons.addWidget(self.button)
+        vbox_Buttons.addWidget(self.button_reset)
 
-        vbox_LogoAndGraphs.addLayout(hbox_Logo)
+        vbox_Buttons.addWidget(self.scroll_checkbox)
+        vbox_Buttons.addWidget(self.plot_checkbox)
+
+        vbox_LogoAndGraphs.addLayout(vbox_Logo)
         vbox_LogoAndGraphs.addLayout(hbox_Graphs)
         hbox_Window.addLayout(vbox_LogoAndGraphs)
         hbox_Window.addLayout(vbox_Indicators)
@@ -194,6 +228,10 @@ class view(QWidget):
         self.setLayout(hbox_Window)
         self.setGeometry(100, 100, 1720, 968)
         self.setWindowTitle('MRT Ground Station')
+
+        self.altitude_curve = self.altitude_graph.plot(self.time_list, self.altitude_list)
+        self.velocity_curve = self.velocity_graph.plot(self.time_list, self.velocity_list)
+        self.acceleration_curve = self.acceleration_graph.plot(self.time_list, self.acceleration_list)
         if show_graphs is True:
             self.show()
 
@@ -225,16 +263,18 @@ class view(QWidget):
                     self.gyro_x = float(telemetry_data[8])
                     if len(telemetry_data) == 10:
                         self.rssi = float(telemetry_data[9])
-                        self.rssi_list.append(float(self.rssi))
+                        if self.plotting_status:
+                            self.rssi_list.append(float(self.rssi))
                 elif len(telemetry_data) == 7:
                     self.rssi = float(telemetry_data[6])
-                    self.rssi_list.append(float(self.rssi))
-
-                self.time_list.append(float(self.time))
-                self.altitude_list.append(float(self.alt))
-                self.temperature_list.append(float(self.temp))
-                self.velocity_list.append(float(self.vel))
-                self.acceleration_list.append(float(self.accel))
+                    if self.plotting_status:
+                        self.rssi_list.append(float(self.rssi))
+                if self.plotting_status:
+                    self.time_list.append(float(self.time))
+                    self.altitude_list.append(float(self.alt))
+                    self.temperature_list.append(float(self.temp))
+                    self.velocity_list.append(float(self.vel))
+                    self.acceleration_list.append(float(self.accel))
             except:
                 print('INVALID DATA SENT TO VIEW')
 
@@ -242,12 +282,13 @@ class view(QWidget):
 
         """ Append GPS data to lists """
         try:
-            utm_coordinates = utm.from_latlon(float(self.lat), float(self.long))  # Convert to UTM coordinates
+
 
             # self.latitude_list.append(utm_coordinates[0])
             # self.longitude_list.append(utm_coordinates[1])
-            self.latitude_list.append(float(self.lat))
-            self.longitude_list.append(float(self.long))
+            if self.plotting_status:
+                self.latitude_list.append(float(self.lat))
+                self.longitude_list.append(float(self.long))
         except:
             print("latlong broken")
 
@@ -260,44 +301,47 @@ class view(QWidget):
             fps = 1.0 / (now - self.lastUpdate)
             self.lastUpdate = now
             self.avgFps = self.avgFps * 0.8 + fps * 0.2
-            self.fps_label.setText("Generating {0:3.2f} fps\nUpdate interval: {1}".format(self.avgFps, self.graph_update_interval))
+            self.fps_label.setText("Generating {0:3.2f} fps        Update interval: {1}".format(self.avgFps, self.graph_update_interval))
             # self.fps_label.setText("Generating {0:3.2f} fps".format(self.avgFps))z
             self.antenna_angle_label.setText('XY:{}\nZ:{}'.format(str(self.antenna_angle[0])[0:self.antenna_precision], str(self.antenna_angle[1])[0:self.antenna_precision]))
-            if self.graph_update_count > self.graph_update_interval:
-                self.graph_update_count = 0
-                if self.optimize_fps:
-                    if self.avgFps < (self.goal_fps-self.bounds):
-                        self.graph_update_interval += 1
-                    elif self.avgFps > (self.goal_fps+self.bounds):
-                        self.graph_update_interval -= 1
+            if self.plotting_status:
+                if self.graph_update_count > self.graph_update_interval:
+                    self.graph_update_count = 0
+                    if self.optimize_fps:
+                        if self.avgFps < (self.goal_fps-self.bounds):
+                            self.graph_update_interval += 1
+                        elif self.avgFps > (self.goal_fps+self.bounds):
+                            self.graph_update_interval -= 1
 
+                    self.position_graph.clear()
 
-                self.altitude_graph.clear()
-                # self.temperature_graph.clear()
-                self.rssi_graph.clear()
-                self.velocity_graph.clear()
-                self.acceleration_graph.clear()
-                self.position_graph.clear()
+                    if len(self.altitude_list) > self.cutoff+1:
+                        self.altitude_curve.setData(self.time_list[-self.cutoff:-1], self.altitude_list[-self.cutoff:-1], pen='r')
+                        # self.temperature_graph.plot(self.time_list[-self.cutoff:-1], self.temperature_list[-self.cutoff:-1], pen='r')
+                        self.velocity_curve.setData(self.time_list[-self.cutoff:-1], self.velocity_list[-self.cutoff:-1], pen='r')
+                        self.acceleration_curve.setData(self.time_list[-self.cutoff:-1], self.acceleration_list[-self.cutoff:-1], pen='r')
 
-                if len(self.altitude_list) > self.cutoff+1:
-                    self.altitude_graph.plot(self.time_list[-self.cutoff:-1], self.altitude_list[-self.cutoff:-1], pen='r')
-                    # self.temperature_graph.plot(self.time_list[-self.cutoff:-1], self.temperature_list[-self.cutoff:-1], pen='r')
-                    self.velocity_graph.plot(self.time_list[-self.cutoff:-1], self.velocity_list[-self.cutoff:-1], pen='r')
-                    self.acceleration_graph.plot(self.time_list[-self.cutoff:-1], self.acceleration_list[-self.cutoff:-1], pen='r')
+                        if self.scroll_status:
+                            try:
+                                self.altitude_graph.setRange(xRange=[self.time_list[-1] - 200000, self.time_list[-1]])
+                                self.velocity_graph.setRange(xRange=[self.time_list[-1] - 200000, self.time_list[-1]])
+                                self.acceleration_graph.setRange(xRange=[self.time_list[-1] - 200000, self.time_list[-1]])
+                            except:
+                                print("Scrolling broke somehow")
 
-                    self.position_graph.plot(self.latitude_list[-self.cutoff:-1], self.longitude_list[-self.cutoff:-1])
-                    if self.end_dots:
-                        self.velocity_graph.plot([self.time], [self.vel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
-                        self.acceleration_graph.plot([self.time], [self.accel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
-                        self.altitude_graph.plot([self.time], [self.alt], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
-                    if len(self.time_list) == len(self.rssi_list):
-                        self.rssi_graph.plot(self.time_list[-self.cutoff:-1], self.rssi_list[-self.cutoff:-1], pen='r')
-                        if self.end_dots:
-                            self.rssi_graph.plot([self.time], [self.rssi], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
-                    # This line adds an X marking the last gps location
-                    self.position_graph.plot([self.lat], [self.long], pen=None, symbol='o', symbolBrush=(255, 0, 0), symbolSize=6.5)
-            else:
-                self.graph_update_count = self.graph_update_count + 1
+                        self.position_graph.plot(self.latitude_list[-self.cutoff:-1], self.longitude_list[-self.cutoff:-1])
+                        # if self.end_dots:
+                        #     self.velocity_graph.plot([self.time], [self.vel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+                        #     self.acceleration_graph.plot([self.time], [self.accel], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+                        #     self.altitude_graph.plot([self.time], [self.alt], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+                        # if len(self.time_list) == len(self.rssi_list):
+                        #     self.rssi_graph.plot(self.time_list[-self.cutoff:-1], self.rssi_list[-self.cutoff:-1], pen='r')
+                        #     if self.end_dots:
+                        #         self.rssi_graph.plot([self.time], [self.rssi], pen=None, symbol='o', symbolBrush=(0, 0, 255), symbolSize=6.5)
+                        # This line adds an X marking the last gps location
+                        self.position_graph.plot([self.lat], [self.long], pen=None, symbol='o', symbolBrush=(255, 0, 0), symbolSize=6.5)
+                else:
+                    self.graph_update_count = self.graph_update_count + 1
 
             self.altitude_LCD.display(self.alt)
             # self.temperature_LCD.display(self.temp)
@@ -346,9 +390,20 @@ class view(QWidget):
 
         self.rssi_list = []
 
+    @pyqtSlot()
+    def on_click_scrolling(self):
+        if self.scroll_checkbox.isChecked():
+            self.scroll_status = True
+        else:
+            self.scroll_status = False
 
-    def update_plots(self):
-        pass
+    @pyqtSlot()
+    def on_click_plotting(self):
+        if self.plot_checkbox.isChecked():
+            self.plotting_status = True
+        else:
+            self.plotting_status = False
+
 
 
 if __name__ == '__main__':
