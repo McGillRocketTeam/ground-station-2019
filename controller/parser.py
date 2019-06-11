@@ -26,8 +26,8 @@ telemetry_data_length = 10  # Length of big telemetry data string
 gps_data_length = 6  # Length of gps data string
 
 counter_gps = 0  # Counter to generate decent GPS data for test only
-ground_lat = 46.003684  # Ground station latitude
-ground_long = -72.731535  # Ground station longitude
+ground_lat = 34.21  # Ground station latitude
+ground_long = -103.24  # Ground station longitude
 ground_alt = 0  # Ground station altitude
 
 
@@ -151,7 +151,6 @@ class Parser(QObject):
         loop_control = True
 
         while loop_control:
-
             if self.real_data:
                 failure = False
                 if self.full_telemetry:
@@ -322,10 +321,10 @@ class Parser(QObject):
         '''calculate antenna direction given rocket coordinates and ground station coordinates'''
         angle = [] # Ordered as angle from east, then angle from ground
         # coordinates of ground station and rocket
-        ground_x = ground_lat
-        ground_y = ground_long
-        rocket_x = float(data[0])
-        rocket_y = float(data[1])
+        ground_x = ground_long
+        ground_y = ground_lat
+        rocket_x = float(data[1])  # Rocket long
+        rocket_y = float(data[0])  # Rocket lat
         rocket_alt = float(data[3])
         # Covert to decimal degrees
         '''rocket_x = self.convert_DMS_to_DD(rocket_x)
@@ -361,7 +360,7 @@ class Parser(QObject):
 
         # Compute phi
         # Distance between origin and P, projection of rocket onto xy-plane
-        d = 2*6371000*math.asin(math.sqrt(math.pow((math.sin((rocket_y-ground_y)/2)), 2) + math.cos(ground_x)*math.cos(rocket_x)*math.pow(math.sin((rocket_x-ground_x)/2), 2)))
+        d = 2*6371000*math.asin(math.sqrt(math.pow((math.sin((rocket_y-ground_y)/2)), 2) + math.cos(ground_y)*math.cos(rocket_y)*math.pow(math.sin((rocket_x-ground_x)/2), 2)))
         phi = (180/math.pi)*math.atan((rocket_alt - ground_alt)/d)
         # TODO: format phi and theta better, how many decimal places?
         angle.append(phi)

@@ -63,7 +63,7 @@ class DataStorage:
         """ Appends new telemetry data to end of the file """
         with open('../storage/telemetry/' + self.telemetry_file_name, "a+") as csvfile_telemetry:
             file_writer = csv.writer(csvfile_telemetry, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            if len(data) == 9:  # TODO: Consider scenarios where the input data is different
+            if len(data) == 9 or len(data) == 10:  # TODO: Consider scenarios where the input data is different
                 file_writer.writerow([time.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8]])  # This is the current format for saving the telemetry data
             csvfile_telemetry.close()
 
@@ -71,7 +71,7 @@ class DataStorage:
         """ Appends new GPS data to end of the file """
         with open('../storage/gps/' + self.gps_file_name, "a+") as csvfile_gps:
             file_writer = csv.writer(csvfile_gps, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            if len(data) == 6:  # TODO: Consider scenarios where the input data is different
+            if len(data) == 6 or len(data) == 7:  # TODO: Consider scenarios where the input data is different
                 file_writer.writerow([time.strftime("%Y-%m-%d %H:%M"), data[0], data[1], data[2], data[3], data[4], data[5]])
             csvfile_gps.close()
 
