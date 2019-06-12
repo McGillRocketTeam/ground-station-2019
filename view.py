@@ -10,6 +10,8 @@ from controller import parser
 from model import datastorage
 
 show_graphs = True  # Show graph toggle option
+graph_range = 20 # 200000 is in milliseconds
+
 LCD_HEIGHT = 40
 
 class view(QWidget):
@@ -230,6 +232,7 @@ class view(QWidget):
         self.setWindowTitle('MRT Ground Station')
 
         self.altitude_curve = self.altitude_graph.plot(self.time_list, self.altitude_list)
+        self.rssi_curve = self.rssi_graph.plot(self.time_list, self.rssi_list)
         self.velocity_curve = self.velocity_graph.plot(self.time_list, self.velocity_list)
         self.acceleration_curve = self.acceleration_graph.plot(self.time_list, self.acceleration_list)
         if show_graphs is True:
@@ -317,15 +320,17 @@ class view(QWidget):
 
                     if len(self.altitude_list) > self.cutoff+1:
                         self.altitude_curve.setData(self.time_list[-self.cutoff:-1], self.altitude_list[-self.cutoff:-1], pen='r')
+                        self.rssi_curve.setData(self.time_list[-self.cutoff:-1], self.altitude_list[-self.cutoff:-1], pen='r')
                         # self.temperature_graph.plot(self.time_list[-self.cutoff:-1], self.temperature_list[-self.cutoff:-1], pen='r')
                         self.velocity_curve.setData(self.time_list[-self.cutoff:-1], self.velocity_list[-self.cutoff:-1], pen='r')
                         self.acceleration_curve.setData(self.time_list[-self.cutoff:-1], self.acceleration_list[-self.cutoff:-1], pen='r')
 
                         if self.scroll_status:
                             try:
-                                self.altitude_graph.setRange(xRange=[self.time_list[-1] - 200000, self.time_list[-1]])
-                                self.velocity_graph.setRange(xRange=[self.time_list[-1] - 200000, self.time_list[-1]])
-                                self.acceleration_graph.setRange(xRange=[self.time_list[-1] - 200000, self.time_list[-1]])
+                                self.altitude_graph.setRange(xRange=[self.time_list[-1] - graph_range, self.time_list[-1]])
+                                self.rssi_graph.setRange(xRange=[self.time_list[-1] - graph_range, self.time_list[-1]])
+                                self.velocity_graph.setRange(xRange=[self.time_list[-1] - graph_range, self.time_list[-1]])
+                                self.acceleration_graph.setRange(xRange=[self.time_list[-1] - graph_range, self.time_list[-1]])
                             except:
                                 print("Scrolling broke somehow")
 
