@@ -26,6 +26,10 @@ class DataStorage:
         if not (os.path.isdir("../storage/antenna_angles")):
             os.mkdir("../storage/antenna_angles")
 
+        if not (os.path.isdir("../storage/serial")):
+            os.mkdir("../storage/serial")
+
+
         cur_time = time.strftime("%Y-%m-%d-%H-%M-%S")
 
         """ Create parse telemetry and gps files, as well as raw data files """
