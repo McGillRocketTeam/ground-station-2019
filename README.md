@@ -15,9 +15,9 @@
 
 6. run this line to install required dependencies: `pip3 install -r requirements.txt`
 
-7. Download python 3.6.x ( https://www.python.org/downloads/ ). IF YOU'RE ON WINDOWS: copy the files 'python3.dll' and 'python36.dll' from python installation location into the project directory.
+7. Download python 3.6.x ( https://www.python.org/downloads/ )
 
-7. Run program with `python3 view.py` in the main ground station directory.
+7. cd to the controller/ directory and run program with `python3 ./../view.py`.
 
 
 
