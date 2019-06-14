@@ -13,7 +13,7 @@
 
 5. cd to project directory
 
-6. run this line to install required dependencies: `pip3 install -r requirements.txt`
+6. Run this line to install required dependencies: `pip3 install -r requirements.txt`
 
 7. Download python 3.6.x ( https://www.python.org/downloads/ )
 
