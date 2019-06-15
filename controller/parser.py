@@ -1,12 +1,8 @@
 import time
-import sys
 
 import model.datastorage as data_storage
-import view as view
 
-import qdarkstyle
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import QThread, QObject, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 
 import controller.serial_sim as serial_sim
 import serial
@@ -60,12 +56,12 @@ class Parser(QObject):
             self.port_gps = ''
         if self.port_from_file and self.real_data:
             if self.full_telemetry:
-                f = open("./storage/serial/full_telemetery.txt", "r")
+                f = open("../storage/serial/full_telemetery.txt", "r")
                 self.port_full = f.readline()
                 if len(self.port_full) == 0:
                     print('Error reading port')
             else:
-                f = open("./storage/serial/gps_backup.txt", "r")
+                f = open("../storage/serial/gps_backup.txt", "r")
                 self.port_gps = f.readline()
                 if len(self.port_gps) == 0:
                     print('Error reading port')
