@@ -1,9 +1,6 @@
 import time
 
-import model.datastorage as data_storage
-
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
-
 import controller.serial_sim as serial_sim
 import serial
 from random import randint
@@ -11,19 +8,18 @@ import random
 import re
 import datetime
 import math
-# from guiLoop import guiLoop
 
 """
 telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,RSSI,E\n
-backup GPS data: Slat,long,time,gps_alt,gps_speed,sat,RSSI,E\n
+backup GPS data: Slat,long,time,gps_alt,gps_speed,sat,E\n
 """
+
 telemetry_data_length = 10  # Length of big telemetry data string
-# TODO: change back to 9 if we remove RSSI
 gps_data_length = 6  # Length of gps data string
 
 counter_gps = 0  # Counter to generate decent GPS data for test only
-ground_lat = 34.21  # Ground station latitude
-ground_long = -103.24  # Ground station longitude
+ground_lat = 32.940394  # Ground station latitude
+ground_long = -106.920134  # Ground station longitude
 ground_alt = 0  # Ground station altitude
 
 
@@ -35,8 +31,8 @@ class Parser(QObject):
     def __init__(self, data_storage_in):
         super().__init__()
 
-        self.full_telemetry = True
-        self.port_from_file = True  # Controls if the port is read from a file
+        self.full_telemetry = True  # Controls if receiver is for full telemetry or just gps redundancy
+        self.port_from_file = False  # Controls if the port is read from a file
         self.real_data = False  # Controls if data is simulated or from actual serial reader
         self.replot_data = False  # Controls if we want to use caladan data
         self.fuseefete = False  # Controls if we want to use fuseefete data
@@ -44,17 +40,18 @@ class Parser(QObject):
         self.data_storage = data_storage_in
         self.antenna_angle = [0, 0]
 
-        if not self.real_data:
+        if not self.real_data:  # If fake data, simulate it
             if self.full_telemetry:
                 self.serial_telemetry = serial_sim.SerialSim(True, self.fuseefete)
             else:
                 self.serial_gps = serial_sim.SerialSim(False, self.fuseefete)
             if self.fuseefete:
                 self.telemetry_data_length = 8
+
         if self.real_data:
             self.port_full = ''
             self.port_gps = ''
-        if self.port_from_file and self.real_data:
+        if self.port_from_file and self.real_data:  # If real data, get the ports used from the port finder
             if self.full_telemetry:
                 f = open("../storage/serial/full_telemetery.txt", "r")
                 self.port_full = f.readline()
@@ -67,27 +64,14 @@ class Parser(QObject):
                     print('Error reading port')
             f.close()
 
-
-
-        # TODO Automated port check setup
-
-        # ls /dev/tty.*
-        # use above to find port of arduino on mac
-
-        self.port = "/dev/tty.usbserial-00002414" # number 5 actual telemetry
-        self.port2 = "/dev/tty.usbserial-00002114" # number 3
-        self.port3 = "/dev/cu.usbmodem49371501" # number 5 rssi
-        self.port4 = "/dev/tty.usbmodem142201" #number 3 rssi
         self.baud = 19200
-        self.baud2 = 9600
         self.baud_combo = 38400
-        # self.baud_combo = 19200
         self.byte = serial.EIGHTBITS
         self.parity = serial.PARITY_NONE
         self.stopbits = serial.STOPBITS_ONE
         self.timeout = 0.2
 
-        # # # Setup for telemetry serial
+        # Setup for telemetry serial
         if self.real_data and self.full_telemetry:
             ser = serial.Serial(self.port_full, self.baud_combo, self.byte, self.parity, self.stopbits, self.timeout)
             self.serial_telemetry = ser
@@ -98,39 +82,18 @@ class Parser(QObject):
 
         # Setup for gps serial
         if self.real_data and not self.full_telemetry:
-            ser2 = serial.Serial(self.port_gps, self.baud_combo, self.byte, self.parity, self.stopbits, self.timeout)
+            ser2 = serial.Serial(self.port_gps, self.baud, self.byte, self.parity, self.stopbits, self.timeout)
             self.serial_gps = ser2
             if not ser2.isOpen():
                 ser2.open()
             else:
                 pass
+
         if self.real_data:
             self.current_ser = self.serial_telemetry if self.full_telemetry else self.serial_gps
         else:
             self.current_ser = None
 
-        # Setup for RSSI serial
-        # ser3 = serial.Serial(self.port3, self.baud2, self.byte, self.parity, self.stopbits, self.timeout)
-        # ser3 = serial.Serial(self.port3, self.baud_combo, self.byte, self.parity, self.stopbits, self.timeout)
-        # self.serial_rssi = ser3
-        # if not ser3.isOpen():
-        #     ser3.open()
-        # else:
-        #     pass
-
-        # while True:
-        #     x = self.current_ser.readline().decode('UTF-8')
-        #     print(x)
-
-        # ser4 = serial.Serial(self.port4, self.baud2, self.byte, self.parity, self.stopbits, self.timeout)
-        # self.serial_rssi_gps = ser4
-        # if not ser4.isOpen():
-        #     ser4.open()
-        # else:
-        #     pass
-
-
-    # @guiLoop
     @pyqtSlot()
     def parse(self):
         """
@@ -141,52 +104,39 @@ class Parser(QObject):
 
         telemetry_data = ''
         gps_data = ''
-        rssi_data = ''
-        rssi_data_gps = ''
         counter_antenna = 0
         loop_control = True
 
         while loop_control:
-            if self.real_data:
+            if self.real_data:  # Dealing with real data
                 failure = False
-                if self.full_telemetry:
+                if self.full_telemetry:  # Read line from full telemetry port
                     try:
                         telemetry_data = self.serial_telemetry.readline().decode('utf-8')
                         print(telemetry_data)
                     except:
                         failure = True
-                elif not self.full_telemetry:
+                elif not self.full_telemetry:  # Read line from gps redundancy port
                     try:
                         gps_data = self.serial_gps.readline().decode('utf-8')
+                        print(gps_data)
                     except:
                         failure = True
-                # try:
-                #     rssi_data = self.serial_rssi.readline().decode('utf-8')
-                #     print('rssi: {}'.format(rssi_data))
-                # except:
-                #     failure = True
-                #     pass
-                # try:
-                #     rssi_data_gps = self.serial_rssi_gps.readline().decode('utf-8')
-                #     print('rssi GPS: {}'.format(rssi_data_gps))
-                # except:
-                #     failure = True
-                #     pass
                 if failure:
                     continue
-            else:  # Fake data
-                if self.replot_data:
+
+            else:  # Dealing with fake data
+                if self.replot_data:  # Replot previous flight
                     self.replot_flight()
                     break
-                else:
-                    time.sleep(0.002)
+                else:  # Simulate data
+                    time.sleep(0.3)
                     if self.full_telemetry:
                         telemetry_data = self.simulate_telemetry()
                         print('parser(190): {}'.format(telemetry_data))
                     elif not self.full_telemetry:
-                        gps_data = self.serial_gps.readline()
-                    rssi_data = -12
-                    rssi_data_gps = -120
+                        gps_data = self.simulate_gps()
+                        print('parser(190): {}'.format(gps_data))
 
             """ Save raw data to files """
             if self.full_telemetry:
@@ -197,35 +147,28 @@ class Parser(QObject):
             """ Process telemetry data """
             if self.full_telemetry:
                 result = self.split_array(telemetry_data, telemetry_data_length)
-                # self.log_parse(result)
-                # print(result)
                 if self.fuseefete and result[0] == 400:
                     result[1][0] = result[1][0].strip('S')
                     to_send = result[1][0:-1]
-                    # print('to_send: {}'.format(to_send))
+
                     if len(to_send) == 9:
                         time.sleep(0.0025)
                         to_send[5] = int(to_send[5], 16)
                         to_send[2] = float(to_send[2]) + self.serial_telemetry.get_multiplier(self.full_telemetry)
-                        # to_send[2] = float(to_send[2]) / 10000
                         self.process_parsed(result[1], counter_antenna, True)
                         self.dataChanged.emit(to_send)
                 if result[0] == 200:  # Successfully parsed
-                    # print(result[1])
                     self.process_parsed(result[1], counter_antenna, True)
                     self.dataChanged.emit(result[1])
             else:
                 """ Process gps data """
                 gps_result = self.split_array(gps_data, gps_data_length)
-                # self.log_parse(gps_result)
-                # print('gps result (parser 220): {}'.format(gps_result))
                 if gps_result[0] == 200:  # Successfully parsed
                     self.process_parsed(gps_result[1], counter_antenna, False)
                     self.dataChanged.emit(gps_result[1])
+
             counter_antenna += 1
             self.dataChanged.emit(self.antenna_angle)
-            print(self.antenna_angle)
-            # yield 0.05
 
     def split_array(self, data, string_length):
         """
@@ -246,6 +189,7 @@ class Parser(QObject):
 
         split_data[0] = split_data[0][1:]  # Remove S from datastring
         split_data = split_data[0:-1]  # Remove E from datastring
+
         try:
             self.convert_string_list_float(split_data)  # Try converting to values to float right away to catch errors
             return 200, split_data
@@ -258,33 +202,19 @@ class Parser(QObject):
         :param counter_antenna: current counter for antenna updating
         :param is_telemetry: indicates if dealing with telemetry string, or with gps redundancy string
         """
-        """ Save and plot data"""
+        """ Save data and calculate antenna angles"""
         if is_telemetry:
             self.data_storage.save_telemetry_data(data)
-            # try:
-            #     self.plots.plot_telemetry_data(data)
-            # except:
-            #     print("Error plotting telemetry data")
 
-            if counter_antenna % 5 == 0:  # Is 1000 the best number for this?
+            if counter_antenna % 50 == 0:  # Is 1000 the best number for this?
                 try:
                     self.antenna_angle = self.find_angle(data)
                     print(str(self.antenna_angle) + '\n')
                     self.data_storage.save_antenna_angles(self.antenna_angle, data[2])
-                    # self.plots.antennaAngle.configure(
-                    # text='ANTENNA ANGLE: '+str(self.antenna_angle[0])+' (xy), '+str(self.antenna_angle[1])+' (z)')
                 except:
                     print("Error calculating antenna angle")
         else:
             self.data_storage.save_gps_data(data)
-            # try:
-            #     self.plots.plot_gps_data(data)
-            # except:
-            #     print("Error plotting GPS data")
-        # try:
-        #     self.plots.update_plots()
-        # except:
-        #     print("Error updating plots")
 
     def convert_string_list_float(self, data):
         if len(data) == telemetry_data_length:
@@ -302,9 +232,7 @@ class Parser(QObject):
             if first_line:
                 first_line = False  # Don't read data if first line, since it is the header
             elif len(eachLine) > 1:
-                #saved_time, lat, long, time, alt, vel, sat, acc, temp, gyro_x = eachLine.split(',')  # Split each line by comma
                 saved_time, lat, long, alt, time, temp, vel, acc, sat = eachLine.split(',')
-                #telemetry_data = [lat, long, time, alt, vel, sat, acc, temp, gyro_x]
                 telemetry_data = [lat, long, time, alt, vel, sat, acc, temp, temp]
                 try:
                     self.plots.plot_telemetry_data(telemetry_data)
@@ -315,18 +243,14 @@ class Parser(QObject):
 
     def find_angle(self, data):
         '''calculate antenna direction given rocket coordinates and ground station coordinates'''
-        angle = [] # Ordered as angle from east, then angle from ground
+        angle = []  # Ordered as angle from east, then angle from ground
         # coordinates of ground station and rocket
         ground_x = ground_long
         ground_y = ground_lat
         rocket_x = float(data[1])  # Rocket long
         rocket_y = float(data[0])  # Rocket lat
         rocket_alt = float(data[3])
-        # Covert to decimal degrees
-        '''rocket_x = self.convert_DMS_to_DD(rocket_x)
-        rocket_y = self.convert_DMS_to_DD(rocket_y)
-        rocket_alt = self.convert_DMS_to_DD(rocket_alt)
-        '''
+
         # Convert DecDegs to radians
         ground_x = (math.pi/180)*ground_x
         ground_y = (math.pi/180)*ground_y
@@ -358,7 +282,6 @@ class Parser(QObject):
         # Distance between origin and P, projection of rocket onto xy-plane
         d = 2*6371000*math.asin(math.sqrt(math.pow((math.sin((rocket_y-ground_y)/2)), 2) + math.cos(ground_y)*math.cos(rocket_y)*math.pow(math.sin((rocket_x-ground_x)/2), 2)))
         phi = (180/math.pi)*math.atan((rocket_alt - ground_alt)/d)
-        # TODO: format phi and theta better, how many decimal places?
         angle.append(phi)
 
         return angle
@@ -420,24 +343,23 @@ class Parser(QObject):
         current_time = round(datetime.datetime.utcnow().timestamp()) - start_time
         return [lat, long, current_time, alt, vel, sat, acc, temp, gyro_x]
 
-    def log_parse(self, data):
-        # f = open("../storage/parselog.txt", "a")
-        # f.write(data[0])
-        # f.write(data[1])
-        # f.close()
-        pass
+    def simulate_telemetry(self):
+        """"
+        :return:  a string starting with 'S' followed by 8 random numbers separated by commas ending with 'E'
+        """
+        random_data = self.generate_random_data_array()
 
+        return 'S' + str(random_data[0])[0:10] + ',' + str(random_data[1])[0:10] + ',' + str(random_data[2])[0:8] + ',' + \
+               str(random_data[3])[0:8] + ',' + str(random_data[4])[0:8] + ',' + str('D')[0:8] + ',' + \
+               str(random_data[6])[0:8] + ',' + str(random_data[7])[0:8] + ',' + str(random_data[8])[0:8] +\
+               ',' + str(random_data[-1]) + ',E\n'
 
-def main():
-    data_store = data_storage.DataStorage()
-    # app = QApplication(sys.argv)
-    # app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+    def simulate_gps(self):
+        """
+        :return: a string starting with 'S' followed by 4 random numbers separated by commas ending with 'E'
+        """
+        random_data = self.generate_random_data_array()
 
-    parser = Parser(data_store)
-    parser.parse()
-
-    #sys.exit(app.exec_())
-
-
-if __name__ == "__main__":
-    main()
+        string = 'S' + str(random_data[0]) + ',' + str(random_data[1]) + ',' + str(random_data[2]) + ',' + \
+                 str(random_data[3]) + ',' + str(random_data[4]) + ',' + str('F') + ',' + str(random_data[5]) + ',E\n'
+        return string

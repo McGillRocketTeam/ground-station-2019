@@ -21,10 +21,10 @@ class SerialSim:
         self.fusee = fusee_data
         if self.fusee:
             if self.tel:
-                with open('./Fusee-Fete/raw_telemetry_fuseefete.txt', 'r') as f:
+                with open('../Fusee-Fete/raw_telemetry_fuseefete.txt', 'r') as f:
                     content = f.readlines()
             else:
-                with open('./Fusee-Fete/raw_gps_fuseefete.txt', 'r') as f:
+                with open('../Fusee-Fete/raw_gps_fuseefete.txt', 'r') as f:
                     content = f.readlines()
             self.manage_content(content, self.tel)
             # x = 'debug'

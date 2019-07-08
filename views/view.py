@@ -1,24 +1,21 @@
 import sys
-from PyQt5.QtWidgets import (QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QLabel, QGridLayout, QLCDNumber, QLineEdit, QPushButton, QCheckBox)
+from PyQt5.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QApplication, QLabel, QLCDNumber, QLineEdit, QPushButton, QCheckBox)
 from PyQt5.QtGui import QPixmap, QFont
-from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, QTimer
+from PyQt5.QtCore import QThread, pyqtSlot, QTimer
 import pyqtgraph as pg
 import qdarkstyle
-import utm
-import numpy as np
 from controller import parser
 from model import datastorage
 
 show_graphs = True  # Show graph toggle option
-graph_range = 20 # 200000 is in milliseconds
+graph_range = 20  # 200000 is in milliseconds
 
 LCD_HEIGHT = 40
 
-class view(QWidget):
 
+class view(QWidget):
     def __init__(self):
         super().__init__()
-
 
         self.data_storage = datastorage.DataStorage()
         self.parser = parser.Parser(self.data_storage)
@@ -81,15 +78,11 @@ class view(QWidget):
         vbox_Buttons = QVBoxLayout()
 
         """Declare widgets"""
-
         self.fps_label = QLabel()
         self.antenna_angle_label = QLabel()
-        # TODO: increase font size
         self.antenna_angle_label.setFont(QFont("Times", self.antenna_font_size, QFont.Bold))
-        # self.antenna_angle_label.setFont(QFont=QFont(15))
 
         self.altitude_graph = pg.PlotWidget(title='Altitude', left='Height', bottom='Time')
-        # self.temperature_graph = pg.PlotWidget(title='Temperature', left='Temperature', bottom='Time')
         self.rssi_graph = pg.PlotWidget(title='RSSI', left='RSSI', bottom='Time')
         self.velocity_graph = pg.PlotWidget(title='Velocity', left='Velocity', bottom='Time')
         self.acceleration_graph = pg.PlotWidget(title='Acceleration', left='Acceleration', bottom='Time')
@@ -110,9 +103,11 @@ class view(QWidget):
 
         self.text_box = QLineEdit(self)
         self.text_box.setFixedWidth(250)
+
         self.button = QPushButton('Update Cutoff', self)
         self.button.clicked.connect(self.on_click)
         self.button.setFixedWidth(250)
+
         self.button_reset = QPushButton('RESET DATA', self)
         self.button_reset.clicked.connect(self.on_click_reset)
         self.button_reset.setFixedWidth(250)
@@ -127,7 +122,6 @@ class view(QWidget):
         self.plot_checkbox.stateChanged.connect(self.on_click_plotting)
 
         self.altitude_LCD = QLCDNumber(self)
-        # self.temperature_LCD = QLCDNumber(self)
         self.rssi_LCD = QLCDNumber(self)
         self.velocity_LCD = QLCDNumber(self)
         self.acceleration_LCD = QLCDNumber(self)
@@ -142,7 +136,6 @@ class view(QWidget):
         self.positionY_LCD.setFixedHeight(LCD_HEIGHT)
 
         self.altitude_LCD.setDigitCount(9)
-        # self.temperature_LCD.setDigitCount(9)
         self.rssi_LCD.setDigitCount(4)
         self.velocity_LCD.setDigitCount(9)
         self.acceleration_LCD.setDigitCount(9)
@@ -150,13 +143,12 @@ class view(QWidget):
         self.positionY_LCD.setDigitCount(10)
 
         altitude_label = QLabel("Current Altitude")
-        # temperature_label = QLabel("Current Temperature")
         rssi_label = QLabel("RSSI")
         velocity_label = QLabel("Current Velocity")
         acceleration_label = QLabel("Current Acceleration")
         position_label = QLabel("Current Position")
 
-        MRT_Logo = QPixmap('MRT-logo.png')
+        MRT_Logo = QPixmap('./../media/MRT-logo.png')
         smaller_MRT_Logo = MRT_Logo.scaledToHeight(100)
         logo_Lbl = QLabel(self)
         logo_Lbl.setPixmap(smaller_MRT_Logo)
@@ -171,10 +163,7 @@ class view(QWidget):
         hbox_Banner.addWidget(MRT_label)
         hbox_Banner.addStretch(1)
 
-
-
         vbox_inner_Graphs.addWidget(self.altitude_graph)
-        # vbox_inner_Graphs.addWidget(self.temperature_graph)
         vbox_inner_Graphs.addWidget(self.rssi_graph)
         vbox_inner_Graphs.addWidget(self.velocity_graph)
         vbox_inner_Graphs.addWidget(self.acceleration_graph)
@@ -183,8 +172,6 @@ class view(QWidget):
 
         vbox_Indicators.addWidget(altitude_label)
         vbox_Indicators.addWidget(self.altitude_LCD)
-        # vbox_Indicators.addWidget(temperature_label)
-        # vbox_Indicators.addWidget(self.temperature_LCD)
         vbox_Indicators.addWidget(rssi_label)
         vbox_Indicators.addWidget(self.rssi_LCD)
         vbox_Indicators.addWidget(velocity_label)
@@ -241,11 +228,11 @@ class view(QWidget):
     @pyqtSlot(list)
     def append_data(self, telemetry_data):
         """
-        Append telemetry data to lists
-
         telemetry long data format: Slat,long,time,alt,vel,sat,acc,temp,gyro_x,RSSI,E\n
         backup GPS data: Slat,long,time,gps_alt,gps_speed,sat,RSSI,E\n
         """
+
+        """ Append telemetry data to lists """
         if len(telemetry_data) == 2:
             self.antenna_angle = telemetry_data
         else:
@@ -281,14 +268,8 @@ class view(QWidget):
             except:
                 print('INVALID DATA SENT TO VIEW')
 
-
-
         """ Append GPS data to lists """
         try:
-
-
-            # self.latitude_list.append(utm_coordinates[0])
-            # self.longitude_list.append(utm_coordinates[1])
             if self.plotting_status:
                 self.latitude_list.append(float(self.lat))
                 self.longitude_list.append(float(self.long))
@@ -297,16 +278,14 @@ class view(QWidget):
 
     @pyqtSlot()
     def plot_data(self):
-
         try:
-
             now = pg.ptime.time()
             fps = 1.0 / (now - self.lastUpdate)
             self.lastUpdate = now
             self.avgFps = self.avgFps * 0.8 + fps * 0.2
             self.fps_label.setText("Generating {0:3.2f} fps        Update interval: {1}".format(self.avgFps, self.graph_update_interval))
-            # self.fps_label.setText("Generating {0:3.2f} fps".format(self.avgFps))z
             self.antenna_angle_label.setText('XY:{}\nZ:{}'.format(str(self.antenna_angle[0])[0:self.antenna_precision], str(self.antenna_angle[1])[0:self.antenna_precision]))
+
             if self.plotting_status:
                 if self.graph_update_count > self.graph_update_interval:
                     self.graph_update_count = 0
@@ -321,7 +300,6 @@ class view(QWidget):
                     if len(self.altitude_list) > self.cutoff+1:
                         self.altitude_curve.setData(self.time_list[-self.cutoff:-1], self.altitude_list[-self.cutoff:-1], pen='r')
                         self.rssi_curve.setData(self.time_list[-self.cutoff:-1], self.altitude_list[-self.cutoff:-1], pen='r')
-                        # self.temperature_graph.plot(self.time_list[-self.cutoff:-1], self.temperature_list[-self.cutoff:-1], pen='r')
                         self.velocity_curve.setData(self.time_list[-self.cutoff:-1], self.velocity_list[-self.cutoff:-1], pen='r')
                         self.acceleration_curve.setData(self.time_list[-self.cutoff:-1], self.acceleration_list[-self.cutoff:-1], pen='r')
 
@@ -349,7 +327,6 @@ class view(QWidget):
                     self.graph_update_count = self.graph_update_count + 1
 
             self.altitude_LCD.display(self.alt)
-            # self.temperature_LCD.display(self.temp)
             self.rssi_LCD.display(self.rssi)
             self.velocity_LCD.display(self.vel)
             self.acceleration_LCD.display(self.accel)
@@ -357,10 +334,8 @@ class view(QWidget):
             self.positionY_LCD.display(self.long)
 
             self.timer.start(0)
-
-            # print(len(self.altitude_list))
-
-        except: print("Problem with graphing")
+        except:
+            print("Problem with graphing")
 
     @pyqtSlot()
     def on_click(self):
@@ -408,7 +383,6 @@ class view(QWidget):
             self.plotting_status = True
         else:
             self.plotting_status = False
-
 
 
 if __name__ == '__main__':

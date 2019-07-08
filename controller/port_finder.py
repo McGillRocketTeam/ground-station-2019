@@ -1,15 +1,4 @@
-import time
-import serial
-import os, pty
-from random import randint
-import random
-import re
-import datetime
-import time
-import math
-import string
-from controller.parser import Parser as parser
-import model.datastorage as data_storage
+import os
 # import views.plots as plots
 from serial.tools import list_ports
 
